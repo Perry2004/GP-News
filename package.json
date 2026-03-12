@@ -1,0 +1,30 @@
+{
+	"name": "gp-news",
+	"version": "1.0.0",
+	"description": "",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"start": "tsx src/main.ts",
+		"biome:check": "biome check",
+		"biome:fix": "biome check --write",
+		"prepare": "husky"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.20.0",
+	"devDependencies": {
+		"@biomejs/biome": "2.4.6",
+		"@types/node": "^25.4.0",
+		"dotenv": "^17.3.1",
+		"husky": "^9.1.7",
+		"tsx": "^4.21.0",
+		"typescript": "^5.9.3"
+	},
+	"dependencies": {
+		"@langchain/core": "^1.1.32",
+		"axios": "^1.13.6",
+		"zod": "^4.3.6"
+	}
+}
