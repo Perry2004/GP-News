@@ -3,9 +3,12 @@
 	"version": "1.0.0",
 	"description": "",
 	"main": "main.js",
+	"type": "module",
 	"scripts": {
 		"start": "tsx src/main.ts",
-		"check": "biome check --write"
+		"check": "biome check",
+		"fix": "biome fix",
+		"prepare": "husky"
 	},
 	"keywords": [],
 	"author": "",
@@ -14,11 +17,14 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.6",
 		"@types/node": "^25.4.0",
+		"dotenv": "^17.3.1",
 		"husky": "^9.1.7",
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
-		"@langchain/core": "^1.1.32"
+		"@langchain/core": "^1.1.32",
+		"axios": "^1.13.6",
+		"zod": "^4.3.6"
 	}
 }
