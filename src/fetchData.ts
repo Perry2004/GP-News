@@ -1,8 +1,5 @@
 import axios from "axios";
-import * as dotenv from "dotenv";
 import { z } from "zod";
-
-dotenv.config();
 
 const envVars = z
 	.object({

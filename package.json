@@ -6,8 +6,8 @@
 	"type": "module",
 	"scripts": {
 		"start": "tsx src/main.ts",
-		"check": "biome check",
-		"fix": "biome fix",
+		"biome:check": "biome check",
+		"biome:fix": "biome check --write",
 		"prepare": "husky"
 	},
 	"keywords": [],

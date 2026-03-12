@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { fetchMarketOverview } from "./fetchData.js";
 
 async function main(): Promise<void> {
