@@ -1,11 +1,11 @@
 import "dotenv/config";
 import { fetchMarketOverview } from "./fetchData.js";
-import { fetchTopNews } from "./fetchNews.js";
+import { fetchNews } from "./fetchNews.js";
 
 async function main(): Promise<void> {
 	const [marketData, newsData] = await Promise.all([
 		fetchMarketOverview(),
-		fetchTopNews(),
+		fetchNews(),
 	]);
 	console.log(JSON.stringify({ market: marketData, news: newsData }, null, 2));
 }
