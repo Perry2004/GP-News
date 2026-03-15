@@ -3,14 +3,11 @@ import { Defuddle } from "defuddle/node";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
 
-const envVars = z
-	.object({
-		NEWS_DATA_API_KEY: z.string().min(1),
-	})
-	.parse(process.env);
+const envSchema = z.object({
+	NEWS_DATA_API_KEY: z.string().min(1),
+});
 
 const NEWSDATA_BASE_URL = "https://newsdata.io/api/1/latest";
-const accessKey = envVars.NEWS_DATA_API_KEY;
 const DEFAULT_TOTAL_LIMIT = 50;
 const NEWSDATA_MAX_SIZE = 10;
 const ARTICLE_FETCH_TIMEOUT_MS = 15_000;
@@ -102,6 +99,9 @@ async function fetchBatchArticles(
 	size: number,
 	page?: string,
 ): Promise<{ articles: NewsArticle[]; nextPage?: string }> {
+	const envVars = envSchema.parse(process.env);
+	const accessKey = envVars.NEWS_DATA_API_KEY;
+
 	const response = await axios.get(NEWSDATA_BASE_URL, {
 		params: {
 			apikey: accessKey,

@@ -5,12 +5,10 @@ import { type BriefingEmailData, briefingSchema } from "./briefingSchema.js";
 import type { fetchMarketOverview } from "./fetchData.js";
 import type { AggregatedNewsArticle } from "./fetchNews.js";
 
-const envVars = z
-	.object({
-		MODEL_NAME: z.string().min(1),
-		AI_API_KEY: z.string().min(1),
-	})
-	.parse(process.env);
+const envSchema = z.object({
+	MODEL_NAME: z.string().min(1),
+	AI_API_KEY: z.string().min(1),
+});
 
 type BriefingData = {
 	market: Awaited<ReturnType<typeof fetchMarketOverview>>;
@@ -59,6 +57,7 @@ function buildBriefingPrompt(data: BriefingData): string {
 export async function generateBriefing(
 	data: BriefingData,
 ): Promise<BriefingEmailData> {
+	const envVars = envSchema.parse(process.env);
 	const prompt = buildBriefingPrompt(data);
 	const modelName = envVars.MODEL_NAME;
 	const model = new ChatGoogleGenerativeAI({

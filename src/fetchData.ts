@@ -14,14 +14,11 @@ const yahooFinance = new (
 	suppressNotices: ["yahooSurvey"],
 });
 
-const envVars = z
-	.object({
-		TWELVE_DATA_API_KEY: z.string().min(1),
-	})
-	.parse(process.env);
+const envSchema = z.object({
+	TWELVE_DATA_API_KEY: z.string().min(1),
+});
 
 const TWELVE_DATA_BASE_URL = "https://api.twelvedata.com";
-const apiKey = envVars.TWELVE_DATA_API_KEY;
 
 const numericString = z
 	.union([z.string(), z.number()])
@@ -74,6 +71,9 @@ const fxTargets = [
 type Quote = z.infer<typeof quoteSchema>;
 
 async function fetchQuote(symbol: string): Promise<Quote> {
+	const envVars = envSchema.parse(process.env);
+	const apiKey = envVars.TWELVE_DATA_API_KEY;
+
 	const response = await axios.get(`${TWELVE_DATA_BASE_URL}/quote`, {
 		params: {
 			symbol,
