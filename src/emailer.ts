@@ -3,7 +3,10 @@ import {
 	SendEmailCommand,
 	type SendEmailCommandOutput,
 } from "@aws-sdk/client-ses";
+import { render } from "@react-email/render";
 import z from "zod";
+import type { BriefingEmailData } from "./briefingSchema.js";
+import { GpNewsEmailTemplate, renderBriefingAsText } from "./emailTemplate.js";
 
 const envVars = z
 	.object({
@@ -29,12 +32,15 @@ const sesClient = new SESClient({
 });
 
 export async function sendBriefingEmail(
-	briefing: string,
+	briefing: BriefingEmailData,
 	subject: string = SUBJECT,
 ): Promise<SendEmailCommandOutput[]> {
 	if (EMAIL_RECEIVERS.length === 0) {
 		throw new Error("EMAIL_RECEIVERS is empty after parsing");
 	}
+
+	const htmlBody = await render(GpNewsEmailTemplate({ briefing }));
+	const textBody = renderBriefingAsText(briefing);
 
 	return Promise.all(
 		EMAIL_RECEIVERS.map((receiver) => {
@@ -46,12 +52,16 @@ export async function sendBriefingEmail(
 					},
 					Message: {
 						Subject: {
-							Data: subject,
+							Data: `${subject} - TESTING ONLY`,
 							Charset: "UTF-8",
 						},
 						Body: {
+							Html: {
+								Data: htmlBody,
+								Charset: "UTF-8",
+							},
 							Text: {
-								Data: briefing,
+								Data: textBody,
 								Charset: "UTF-8",
 							},
 						},

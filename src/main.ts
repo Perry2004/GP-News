@@ -23,11 +23,10 @@ async function main(): Promise<void> {
 		market: marketData,
 		news: newsData,
 	});
-	console.log(briefing.subject, "\n", briefing.content);
-	const sendResult = await sendBriefingEmail(
-		briefing.content,
-		briefing.subject,
+	console.log(
+		`Briefing generated: ${briefing.subject} [${briefing.priority.level}]`,
 	);
+	const sendResult = await sendBriefingEmail(briefing, briefing.subject);
 	console.log(
 		`Email sent via SES. MessageId: ${sendResult.map((res) => res.MessageId ?? "unknown").join(", ")}`,
 	);
