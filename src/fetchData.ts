@@ -1,5 +1,18 @@
 import axios from "axios";
+import YahooFinance from "yahoo-finance2";
 import { z } from "zod";
+
+interface YahooFinanceInstance {
+	quote(symbol: string): Promise<unknown>;
+}
+
+const yahooFinance = new (
+	YahooFinance as unknown as {
+		new (options?: { suppressNotices?: string[] }): YahooFinanceInstance;
+	}
+)({
+	suppressNotices: ["yahooSurvey"],
+});
 
 const envVars = z
 	.object({
@@ -44,13 +57,12 @@ const errorSchema = z.object({
 	status: z.string().optional(),
 });
 
-// symbols: https://support.twelvedata.com/en/articles/5620513-how-to-find-all-available-symbols-at-twelve-data
 const indexTargets = [
-	{ label: "NASDAQ", symbol: "QQQ" },
-	{ label: "DAX", symbol: "EWG" },
-	{ label: "S&P 500", symbol: "SPY" },
-	{ label: "Dow Jones", symbol: "DIA" },
-	{ label: "Nikkei", symbol: "EWJ" },
+	{ label: "NASDAQ", symbol: "^IXIC" },
+	{ label: "DAX", symbol: "^GDAXI" },
+	{ label: "S&P 500", symbol: "^GSPC" },
+	{ label: "Dow Jones", symbol: "^DJI" },
+	{ label: "Nikkei", symbol: "^N225" },
 ] as const;
 
 const fxTargets = [
@@ -89,6 +101,51 @@ async function fetchQuote(symbol: string): Promise<Quote> {
 	return parsed.data;
 }
 
+type YahooQuoteResponse = {
+	symbol: string;
+	shortName?: string;
+	longName?: string;
+	fullExchangeName?: string;
+	regularMarketPrice: number;
+	regularMarketPreviousClose?: number;
+	regularMarketChange?: number;
+	regularMarketChangePercent?: number;
+	currency?: string;
+	regularMarketTime?: number | string | Date;
+	regularMarketVolume?: number;
+};
+
+async function fetchYahooQuote(symbol: string): Promise<Quote> {
+	const result = (await yahooFinance.quote(symbol)) as YahooQuoteResponse;
+
+	if (!result) {
+		throw new Error(`Yahoo Finance error for ${symbol}: No data returned`);
+	}
+
+	return {
+		symbol: result.symbol,
+		name: result.shortName ?? result.longName ?? undefined,
+		exchange: result.fullExchangeName ?? undefined,
+		close: String(result.regularMarketPrice),
+		previous_close: result.regularMarketPreviousClose
+			? String(result.regularMarketPreviousClose)
+			: undefined,
+		change: result.regularMarketChange
+			? String(result.regularMarketChange)
+			: undefined,
+		percent_change: result.regularMarketChangePercent
+			? String(result.regularMarketChangePercent)
+			: undefined,
+		currency: result.currency ?? undefined,
+		timestamp: result.regularMarketTime
+			? new Date(result.regularMarketTime).toISOString()
+			: undefined,
+		volume: result.regularMarketVolume
+			? String(result.regularMarketVolume)
+			: undefined,
+	};
+}
+
 export async function fetchMarketOverview(): Promise<{
 	timestamp: string;
 	indices: Array<{ label: string; quote: Quote }>;
@@ -97,7 +154,7 @@ export async function fetchMarketOverview(): Promise<{
 	const indexQuotes = await Promise.all(
 		indexTargets.map(async ({ label, symbol }) => ({
 			label,
-			quote: await fetchQuote(symbol),
+			quote: await fetchYahooQuote(symbol),
 		})),
 	);
 
