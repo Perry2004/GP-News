@@ -6,6 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"start": "tsx src/main.ts",
+		"build": "tsc",
 		"biome:check": "biome check",
 		"biome:fix": "biome check --write",
 		"prepare": "husky"
@@ -16,6 +17,7 @@
 	"packageManager": "pnpm@10.20.0",
 	"devDependencies": {
 		"@biomejs/biome": "2.4.6",
+		"@types/aws-lambda": "^8.10.161",
 		"@types/jsdom": "^28.0.0",
 		"@types/node": "^25.4.0",
 		"@types/react": "^19.2.14",
