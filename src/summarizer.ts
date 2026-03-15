@@ -1,6 +1,7 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import "dotenv/config";
 import z from "zod";
+import { type BriefingEmailData, briefingSchema } from "./briefingSchema.js";
 import type { fetchMarketOverview } from "./fetchData.js";
 import type { AggregatedNewsArticle } from "./fetchNews.js";
 
@@ -20,51 +21,51 @@ type BriefingData = {
 	};
 };
 
-const briefingResponseSchema = z.object({
-	response: z.string().min(1).describe("Email briefing response"),
-});
-
-type BriefingResponse = z.infer<typeof briefingResponseSchema>;
-
 function buildBriefingPrompt(data: BriefingData): string {
 	return `
-        You are preparing GP News Daily Briefing for an executive audience.
-        Generate one email briefing that can be read in about 3 minutes.
-        High-signal, low-noise, concise, no filler.
+		You are preparing GP News Daily Briefing for an executive audience.
+		Generate concise, factual, high-signal output that can be read in about 3 minutes.
 
-        Output format:
-        1) Email Priority: NORMAL or HIGH with a one-line reason.
-        2) Market Snapshot: NASDAQ, DAX, S&P 500, Dow Jones, Nikkei, and JPY/CNY/USD with key move and likely driver in plain English.
-        3) Priority-Ranked News: numbered list of most important developments, each 1-2 sentences, merged and deduplicated.
-        4) Tone Differences: only include if meaningful framing differences exist across outlets.
-        5) Tech Tendency: compact trend + implication (AI models/infrastructure, chips, hardware, Big Tech strategy).
-        6) Polymarket Watch: top 3 relevant contracts across politics, technology, war. If contract prices are unavailable, infer directional market pricing from the input and label it as inferred.
+		You must return JSON that strictly matches the provided schema.
+		Do not include markdown, prose outside fields, or extra keys.
 
-        Source policy and weighting:
-        - Reuters/AP for baseline facts
-        - Bloomberg/WSJ/FT for market interpretation
-        - NHK/Nikkei Asia for Japan/Asia framing
-        - Al Jazeera for Middle East framing (translate Arabic framing naturally to English if present)
-        - Cross-check major claims when possible
-        - Avoid redundant sourcing unless interpretation differs materially
+		Editorial rules:
+		- Prioritize verified facts and avoid speculation.
+		- Deduplicate overlapping stories and keep summaries compact.
+		- Use professional language suitable for senior decision-makers.
+		- Mark priority HIGH only for immediate market-moving risk, major military escalation, major policy decisions, or material global sentiment shifts.
 
-        Email HIGH priority only if at least one item is immediately market-moving, major military escalation, major policy decision, or materially shifts global risk sentiment.
+		Section requirements:
+		1) subject: Specific, concise, and professional.
+		2) title: Usually "GP News Daily Briefing" unless a clearer headline is warranted.
+		3) priority: level + one-line reason.
+		4) marketSnapshot: Include key equity indices and major FX where available, with value, move, and plain-English driver.
+		5) priorityNews: Ranked by urgency/impact. Each item needs headline and 1-2 sentence summary. whyItMatters is optional but preferred when impact is non-obvious. link should be the source article URL from the input data when available.
+		6) techTendency: theme + current signal + implication. link should be the source article URL from the input data when available.
 
-        News + market input JSON:
-        ${JSON.stringify(data)}
+		Source weighting guidance:
+		- Reuters/AP for baseline facts
+		- Bloomberg/WSJ/FT for market interpretation
+		- NHK/Nikkei Asia for Japan/Asia framing
+		- Al Jazeera for Middle East framing
+		- Cross-check major claims when possible
+		- Avoid repeating similar sources unless framing materially differs
+
+		News + market input JSON:
+		${JSON.stringify(data)}
     `;
 }
 
 export async function generateBriefing(
 	data: BriefingData,
-): Promise<BriefingResponse> {
+): Promise<BriefingEmailData> {
 	const prompt = buildBriefingPrompt(data);
 	const modelName = envVars.MODEL_NAME;
 	const model = new ChatGoogleGenerativeAI({
 		model: modelName,
 		apiKey: envVars.AI_API_KEY,
 	});
-	const structuredModel = model.withStructuredOutput(briefingResponseSchema);
+	const structuredModel = model.withStructuredOutput(briefingSchema);
 	const response = await structuredModel.invoke(prompt);
-	return response;
+	return briefingSchema.parse(response);
 }

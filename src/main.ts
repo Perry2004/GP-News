@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { sendBriefingEmail } from "./emailer.js";
 import { fetchMarketOverview } from "./fetchData.js";
 import { fetchNews } from "./fetchNews.js";
 import { generateBriefing } from "./summarizer.js";
@@ -22,7 +23,13 @@ async function main(): Promise<void> {
 		market: marketData,
 		news: newsData,
 	});
-	console.log(briefing.response);
+	console.log(
+		`Briefing generated: ${briefing.subject} [${briefing.priority.level}]`,
+	);
+	const sendResult = await sendBriefingEmail(briefing, briefing.subject);
+	console.log(
+		`Email sent via SES. MessageId: ${sendResult.map((res) => res.MessageId ?? "unknown").join(", ")}`,
+	);
 }
 
 main().catch((error: unknown) => {
