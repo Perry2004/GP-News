@@ -6,6 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"start": "tsx src/main.ts",
+		"build": "tsc",
 		"biome:check": "biome check",
 		"biome:fix": "biome check --write",
 		"prepare": "husky"
