@@ -25,6 +25,7 @@
 	},
 	"dependencies": {
 		"@langchain/core": "^1.1.32",
+		"@langchain/google-genai": "^2.1.25",
 		"axios": "^1.13.6",
 		"defuddle": "^0.12.0",
 		"jsdom": "^24.1.3",
