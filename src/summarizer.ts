@@ -21,7 +21,8 @@ type BriefingData = {
 };
 
 const briefingResponseSchema = z.object({
-	response: z.string().min(1).describe("Email briefing response"),
+	content: z.string().min(1).describe("Email briefing response"),
+	subject: z.string().min(1).describe("Email subject line"),
 });
 
 type BriefingResponse = z.infer<typeof briefingResponseSchema>;
@@ -49,6 +50,8 @@ function buildBriefingPrompt(data: BriefingData): string {
         - Avoid redundant sourcing unless interpretation differs materially
 
         Email HIGH priority only if at least one item is immediately market-moving, major military escalation, major policy decision, or materially shifts global risk sentiment.
+
+		ENSURE THE BRIEFING CONTENT IS FORMATTED PROPERLY WITH MARKDOWN FOR EASY READING IN EMAIL. USE HEADERS, BOLD, AND BULLETS AS APPROPRIATE.
 
         News + market input JSON:
         ${JSON.stringify(data)}

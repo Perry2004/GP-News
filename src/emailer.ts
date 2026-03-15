@@ -30,29 +30,34 @@ const sesClient = new SESClient({
 
 export async function sendBriefingEmail(
 	briefing: string,
-): Promise<SendEmailCommandOutput> {
+	subject: string = SUBJECT,
+): Promise<SendEmailCommandOutput[]> {
 	if (EMAIL_RECEIVERS.length === 0) {
 		throw new Error("EMAIL_RECEIVERS is empty after parsing");
 	}
 
-	return sesClient.send(
-		new SendEmailCommand({
-			Source: EMAIL_SENDER,
-			Destination: {
-				ToAddresses: EMAIL_RECEIVERS,
-			},
-			Message: {
-				Subject: {
-					Data: SUBJECT,
-					Charset: "UTF-8",
-				},
-				Body: {
-					Text: {
-						Data: briefing,
-						Charset: "UTF-8",
+	return Promise.all(
+		EMAIL_RECEIVERS.map((receiver) => {
+			return sesClient.send(
+				new SendEmailCommand({
+					Source: EMAIL_SENDER,
+					Destination: {
+						ToAddresses: [receiver],
 					},
-				},
-			},
+					Message: {
+						Subject: {
+							Data: subject,
+							Charset: "UTF-8",
+						},
+						Body: {
+							Text: {
+								Data: briefing,
+								Charset: "UTF-8",
+							},
+						},
+					},
+				}),
+			);
 		}),
 	);
 }
