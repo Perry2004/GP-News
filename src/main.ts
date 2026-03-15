@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { sendBriefingEmail } from "./emailer.js";
 import { fetchMarketOverview } from "./fetchData.js";
 import { fetchNews } from "./fetchNews.js";
 import { generateBriefing } from "./summarizer.js";
@@ -23,6 +24,10 @@ async function main(): Promise<void> {
 		news: newsData,
 	});
 	console.log(briefing.response);
+	const sendResult = await sendBriefingEmail(briefing.response);
+	console.log(
+		`Email sent via SES. MessageId: ${sendResult.MessageId ?? "unknown"}`,
+	);
 }
 
 main().catch((error: unknown) => {
