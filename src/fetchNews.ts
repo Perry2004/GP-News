@@ -10,7 +10,7 @@ const envSchema = z.object({
 const NEWSDATA_BASE_URL = "https://newsdata.io/api/1/latest";
 const DEFAULT_TOTAL_LIMIT = 50;
 const NEWSDATA_MAX_SIZE = 10;
-const ARTICLE_FETCH_TIMEOUT_MS = 15_000;
+const ARTICLE_FETCH_TIMEOUT_MS = 30_000;
 
 const SOURCE_CONFIGS = [
 	"bloomberg.com",
@@ -110,7 +110,7 @@ async function fetchBatchArticles(
 			size,
 			...(page ? { page } : {}),
 		},
-		timeout: 15_000,
+		timeout: 30_000,
 	});
 
 	const errorParsed = errorResponseSchema.safeParse(response.data);
