@@ -836,8 +836,8 @@ packages:
   '@types/uuid@10.0.0':
     resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
 
-  '@xmldom/xmldom@0.8.11':
-    resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
+  '@xmldom/xmldom@0.8.12':
+    resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==}
     engines: {node: '>=10.0.0'}
 
   agent-base@7.1.4:
@@ -2414,7 +2414,7 @@ snapshots:
 
   '@types/uuid@10.0.0': {}
 
-  '@xmldom/xmldom@0.8.11':
+  '@xmldom/xmldom@0.8.12':
     optional: true
 
   agent-base@7.1.4: {}
@@ -2745,7 +2745,7 @@ snapshots:
 
   mathml-to-latex@1.5.0:
     dependencies:
-      '@xmldom/xmldom': 0.8.11
+      '@xmldom/xmldom': 0.8.12
     optional: true
 
   mime-db@1.52.0: {}
