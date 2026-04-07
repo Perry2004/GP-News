@@ -79,7 +79,7 @@ async function fetchQuote(symbol: string): Promise<Quote> {
 			symbol,
 			apikey: apiKey,
 		},
-		timeout: 30_000,
+		timeout: 60_000,
 	});
 
 	const errorParsed = errorSchema.safeParse(response.data);
