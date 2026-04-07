@@ -52,7 +52,7 @@ export async function sendBriefingEmail(
 					},
 					Message: {
 						Subject: {
-							Data: `${subject} - TESTING ONLY`,
+							Data: `${subject}`,
 							Charset: "UTF-8",
 						},
 						Body: {
