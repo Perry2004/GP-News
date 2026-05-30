@@ -2,7 +2,7 @@ APP := $(notdir $(shell go list -m))
 BIN_DIR := bin
 BIN := $(BIN_DIR)/$(APP)
 
-.PHONY: build check clean format install-hooks pre-commit run test tidy vet
+.PHONY: build check clean format install-hooks pre-commit run test cover tidy vet
 
 build:
 	@mkdir -p $(BIN_DIR)
@@ -26,7 +26,11 @@ run:
 	go run .
 
 test:
-	go test ./...
+	go test -v ./...
+
+cover:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out
 
 tidy:
 	go mod tidy

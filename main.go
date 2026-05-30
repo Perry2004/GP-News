@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -26,9 +27,14 @@ func main() {
 	slog.Debug("GP-News configuration loaded", "environment", envName, "config", cfg)
 	slog.Info("Starting GP-News")
 
-	// [TODO] Fetch Yahoo Finance
+	ctx := context.Background()
 
-	// [TODO] Fetch twelve data
+	// [] Fetch market data
+	marketValues, fetchFailures := FetchYahooMarketValues(ctx, yahooFinanceInstruments())
+	slog.Info("Yahoo Finance market snapshot fetched",
+		"success_count", len(marketValues),
+		"failure_count", len(fetchFailures),
+	)
 
 	// [TODO] Fetch NewsData.io
 
