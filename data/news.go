@@ -22,8 +22,12 @@ const (
 )
 
 type NewsArticle struct {
-	Title string
-	Link  string
+	Title              string
+	Link               string
+	ExtractedTitle     *string
+	ExtractedContent   *string
+	ExtractedWordCount *int
+	ExtractionError    string `json:",omitempty"`
 }
 
 type NewsArticleBucket struct {

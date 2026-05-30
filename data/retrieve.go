@@ -32,6 +32,9 @@ func RetrieveData(ctx context.Context, cfg Config) ([]MarketValue, []NewsArticle
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		slog.Debug("Cached market values", "market_values", marketValues)
+		slog.Debug("Cached category buckets", "category_buckets", categoryBuckets)
+		slog.Debug("Cached region buckets", "region_buckets", regionBuckets)
 		slog.Info("Cached data JSON loaded",
 			"market_count", len(marketValues),
 			"category_bucket_count", len(categoryBuckets),
@@ -99,6 +102,8 @@ func RetrieveData(ctx context.Context, cfg Config) ([]MarketValue, []NewsArticle
 			slog.Info("NewsData region articles fetched", "bucket_count", len(regionBuckets), "article_count", countNewsArticles(regionBuckets), "failure_count", len(regionFetchFailures))
 		}
 	}
+
+	categoryBuckets, regionBuckets = enrichNewsArticleBucketsWithContent(ctx, categoryBuckets, regionBuckets)
 
 	if cfg.PersistData {
 		if err := StoreDataJSON(marketValuesFilePath, newsDataFilePath, marketValues, categoryBuckets, regionBuckets); err != nil {
