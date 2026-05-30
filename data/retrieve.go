@@ -64,7 +64,6 @@ func RetrieveData(ctx context.Context, cfg Config) ([]MarketValue, []NewsArticle
 		}{Values: marketValues, Failures: fetchFailures}
 	}()
 	go func() {
-		// [NOTE] News data shall be fetched sequentially, since the API rate limit in free tier is too low.
 		categoryBuckets, categoryFetchFailures := FetchNewsDataCategoryArticles(ctx, cfg.NewsDataAPIKey)
 		categoryBucketsChan <- struct {
 			Buckets  []NewsArticleBucket

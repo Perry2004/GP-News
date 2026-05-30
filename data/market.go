@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	defaultYahooChartBaseURL = "https://query1.finance.yahoo.com/v8/finance/chart/"
-	dataSource               = "yahoo_chart_api"
+	defaultYahooChartBaseURL  = "https://query1.finance.yahoo.com/v8/finance/chart/"
+	dataSource                = "yahoo_chart_api"
+	yahooMarketFetchTimeout   = 30 * time.Second
+	yahooMarketRequestTimeout = 20 * time.Second
 )
 
 type Instrument struct {
@@ -105,7 +107,7 @@ func FetchYahooMarketValues(ctx context.Context, instruments []Instrument) ([]Ma
 }
 
 func fetchYahooMarketValues(ctx context.Context, instruments []Instrument, client *http.Client, baseURL string) ([]MarketValue, []FetchFailure) {
-	fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second) // 10s total timeout for all fetches
+	fetchCtx, cancel := context.WithTimeout(ctx, yahooMarketFetchTimeout)
 	defer cancel()
 
 	marketValuesChan := make(chan MarketValue, len(instruments))
@@ -113,7 +115,7 @@ func fetchYahooMarketValues(ctx context.Context, instruments []Instrument, clien
 
 	for _, instrument := range instruments {
 		go func(instrument Instrument) {
-			reqCtx, cancel := context.WithTimeout(fetchCtx, 5*time.Second) // 5s timeout per instrument
+			reqCtx, cancel := context.WithTimeout(fetchCtx, yahooMarketRequestTimeout)
 			defer cancel()
 			value, err := fetchYahooMarketValue(reqCtx, client, baseURL, instrument)
 			if err != nil {
