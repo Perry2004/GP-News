@@ -1,6 +1,12 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"errors"
+	"log/slog"
+	"strings"
+	"testing"
+)
 
 func TestMaskConfigForLogging(t *testing.T) {
 	cfg := config{
@@ -18,5 +24,56 @@ func TestMaskConfigForLogging(t *testing.T) {
 	}
 	if cfg.NewsDataAPIKey != "secret-news-data-key" {
 		t.Fatal("maskConfigForLogging mutated the original config")
+	}
+}
+
+func TestMaskSensitiveLogAttrMasksAPIKeyInDirectErrorLogs(t *testing.T) {
+	var log bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&log, &slog.HandlerOptions{
+		Level:       slog.LevelDebug,
+		ReplaceAttr: maskSensitiveLogAttr,
+	}))
+
+	logger.Warn(
+		"NewsData fetch failed",
+		"bucket", "middle_east",
+		"endpoint", "latest",
+		"error", errors.New(`request failed for latest: Get "https://newsdata.io/api/1/latest?apikey=secret-api-key&country=lb%2Ceg&size=10": GET https://newsdata.io/api/1/latest?apikey=secret-api-key&country=lb%2Ceg&size=10 giving up after 1 attempt(s): context deadline exceeded`),
+	)
+
+	output := log.String()
+	if strings.Contains(output, "secret-api-key") {
+		t.Fatalf("log output leaked API key: %s", output)
+	}
+	if strings.Count(output, "apikey=********") != 2 {
+		t.Fatalf("log output did not mask both API key URLs: %s", output)
+	}
+	if !strings.Contains(output, "country=lb%2Ceg") {
+		t.Fatalf("log output lost non-sensitive query values: %s", output)
+	}
+}
+
+func TestMaskSensitiveLogAttrMasksAPIKeyInURL(t *testing.T) {
+	var log bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&log, &slog.HandlerOptions{
+		Level:       slog.LevelDebug,
+		ReplaceAttr: maskSensitiveLogAttr,
+	}))
+
+	logger.Debug(
+		"performing request",
+		"method", "GET",
+		"url", "https://newsdata.io/api/1/latest?apikey=secret-api-key&country=nl%2Cch",
+	)
+
+	output := log.String()
+	if strings.Contains(output, "secret-api-key") {
+		t.Fatalf("log output leaked API key: %s", output)
+	}
+	if !strings.Contains(output, "apikey=********") {
+		t.Fatalf("log output did not mask API key: %s", output)
+	}
+	if !strings.Contains(output, "country=nl%2Cch") {
+		t.Fatalf("log output lost non-sensitive query values: %s", output)
 	}
 }
