@@ -1,4 +1,4 @@
-package main
+package data
 
 import (
 	"context"
@@ -19,7 +19,13 @@ type cachedNewsDataJSON struct {
 	RegionBuckets   []NewsArticleBucket `json:"region_buckets"`
 }
 
-func RetrieveData(ctx context.Context, cfg config) ([]MarketValue, []NewsArticleBucket, []NewsArticleBucket, error) {
+type Config struct {
+	NewsDataAPIKey string
+	EnableFetching bool
+	PersistData    bool
+}
+
+func RetrieveData(ctx context.Context, cfg Config) ([]MarketValue, []NewsArticleBucket, []NewsArticleBucket, error) {
 	if !cfg.EnableFetching {
 		slog.Info("Fetching disabled; loading cached data JSON", "market_file", marketValuesFilePath, "news_file", newsDataFilePath)
 		marketValues, categoryBuckets, regionBuckets, err := LoadDataJSON(marketValuesFilePath, newsDataFilePath)

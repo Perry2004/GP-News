@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strings"
 
+	"gpnews/data"
+
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
 )
@@ -36,7 +38,11 @@ func main() {
 	slog.Info("Starting GP-News")
 
 	ctx := context.Background()
-	marketValues, categoryBuckets, regionBuckets, err := RetrieveData(ctx, cfg)
+	marketValues, categoryBuckets, regionBuckets, err := data.RetrieveData(ctx, data.Config{
+		NewsDataAPIKey: cfg.NewsDataAPIKey,
+		EnableFetching: cfg.EnableFetching,
+		PersistData:    cfg.PersistData,
+	})
 	if err != nil {
 		panic(err)
 	}
