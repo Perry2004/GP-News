@@ -65,7 +65,7 @@ func TestBuildNewsDataURL(t *testing.T) {
 	requestURL, err := buildNewsDataURL("https://newsdata.test/api/1/", "/latest", "test-api-key", map[string]string{
 		"country": "us,ca",
 		"q":       "markets OR inflation",
-	})
+	}, 7)
 	if err != nil {
 		t.Fatalf("buildNewsDataURL returned error: %v", err)
 	}
@@ -98,13 +98,74 @@ func TestBuildNewsDataURL(t *testing.T) {
 	if query.Get("prioritydomain") != "top" {
 		t.Fatalf("prioritydomain = %q, want %q", query.Get("prioritydomain"), "top")
 	}
-	if query.Get("size") != "10" {
-		t.Fatalf("size = %q, want %q", query.Get("size"), "10")
+	if query.Get("size") != "7" {
+		t.Fatalf("size = %q, want %q", query.Get("size"), "7")
 	}
 	if query.Get("country") != "us,ca" {
 		t.Fatalf("country = %q, want %q", query.Get("country"), "us,ca")
 	}
 	if query.Get("q") != "markets OR inflation" {
 		t.Fatalf("q = %q, want %q", query.Get("q"), "markets OR inflation")
+	}
+}
+
+func TestBuildNewsDataURLDefaultSize(t *testing.T) {
+	requestURL, err := buildNewsDataURL("https://newsdata.test/api/1", "latest", "test-api-key", nil, 0)
+	if err != nil {
+		t.Fatalf("buildNewsDataURL returned error: %v", err)
+	}
+
+	parsedURL, err := url.Parse(requestURL)
+	if err != nil {
+		t.Fatalf("url.Parse returned error: %v", err)
+	}
+
+	if parsedURL.Query().Get("size") != "10" {
+		t.Fatalf("size = %q, want %q", parsedURL.Query().Get("size"), "10")
+	}
+}
+
+func TestWeightedNewsDataRegionRequestSizes(t *testing.T) {
+	request := weightedNewsDataRegionRequest("europe", "Europe",
+		newsDataWeightedCountryChunk{Countries: "gb,de,fr,it,es", Weight: 6},
+		newsDataWeightedCountryChunk{Countries: "nl,ch,se,no,dk", Weight: 3},
+		newsDataWeightedCountryChunk{Countries: "pl,be,at,ie,fi", Weight: 1},
+	)
+
+	if request.MaxArticles != newsDataBucketArticleLimit {
+		t.Fatalf("MaxArticles = %d, want %d", request.MaxArticles, newsDataBucketArticleLimit)
+	}
+
+	gotSizes := make([]int, 0, len(request.Requests))
+	totalSize := 0
+	for _, newsRequest := range request.Requests {
+		gotSizes = append(gotSizes, newsRequest.Size)
+		totalSize += newsRequest.Size
+	}
+
+	wantSizes := []int{6, 3, 1}
+	for i, wantSize := range wantSizes {
+		if gotSizes[i] != wantSize {
+			t.Fatalf("request size at index %d = %d, want %d; all sizes = %v", i, gotSizes[i], wantSize, gotSizes)
+		}
+	}
+	if totalSize != newsDataBucketArticleLimit {
+		t.Fatalf("total request size = %d, want %d", totalSize, newsDataBucketArticleLimit)
+	}
+}
+
+func TestNewsDataRegionRequestsUseBucketLimit(t *testing.T) {
+	for _, request := range newsDataRegionRequests() {
+		if request.MaxArticles != newsDataBucketArticleLimit {
+			t.Fatalf("%s MaxArticles = %d, want %d", request.ID, request.MaxArticles, newsDataBucketArticleLimit)
+		}
+
+		totalSize := 0
+		for _, newsRequest := range request.Requests {
+			totalSize += newsRequest.Size
+		}
+		if totalSize != newsDataBucketArticleLimit {
+			t.Fatalf("%s total request size = %d, want %d", request.ID, totalSize, newsDataBucketArticleLimit)
+		}
 	}
 }

@@ -15,6 +15,7 @@ import (
 const (
 	defaultNewsDataBaseURL            = "https://newsdata.io/api/1"
 	defaultNewsDataMaxConcurrentCalls = 1
+	newsDataBucketArticleLimit        = 10
 	newsDataSource                    = "newsdata_io"
 	newsDataFetchTimeout              = 90 * time.Second
 	newsDataBucketTimeout             = 45 * time.Second
@@ -37,14 +38,22 @@ type NewsDataFetchFailure struct {
 }
 
 type newsDataBucketRequest struct {
-	ID       string
-	Name     string
-	Requests []newsDataRequest
+	ID          string
+	Name        string
+	MaxArticles int
+	Requests    []newsDataRequest
 }
 
 type newsDataRequest struct {
 	Endpoint string
 	Params   map[string]string
+	Size     int
+	Weight   int
+}
+
+type newsDataWeightedCountryChunk struct {
+	Countries string
+	Weight    int
 }
 
 type newsDataBucketResult struct {
@@ -88,8 +97,9 @@ func countNewsArticles(buckets []NewsArticleBucket) int {
 func newsDataCategoryRequests() []newsDataBucketRequest {
 	return []newsDataBucketRequest{
 		{
-			ID:   "markets_macro",
-			Name: "Markets & Macro",
+			ID:          "markets_macro",
+			Name:        "Markets & Macro",
+			MaxArticles: newsDataBucketArticleLimit,
 			Requests: []newsDataRequest{
 				{
 					Endpoint: "market",
@@ -100,8 +110,9 @@ func newsDataCategoryRequests() []newsDataBucketRequest {
 			},
 		},
 		{
-			ID:   "politics_policy",
-			Name: "Politics & Policy",
+			ID:          "politics_policy",
+			Name:        "Politics & Policy",
+			MaxArticles: newsDataBucketArticleLimit,
 			Requests: []newsDataRequest{
 				{
 					Endpoint: "latest",
@@ -113,8 +124,9 @@ func newsDataCategoryRequests() []newsDataBucketRequest {
 			},
 		},
 		{
-			ID:   "war_geopolitical_risk",
-			Name: "War & Geopolitical Risk",
+			ID:          "war_geopolitical_risk",
+			Name:        "War & Geopolitical Risk",
+			MaxArticles: newsDataBucketArticleLimit,
 			Requests: []newsDataRequest{
 				{
 					Endpoint: "latest",
@@ -126,8 +138,9 @@ func newsDataCategoryRequests() []newsDataBucketRequest {
 			},
 		},
 		{
-			ID:   "technology_ai",
-			Name: "Technology & AI",
+			ID:          "technology_ai",
+			Name:        "Technology & AI",
+			MaxArticles: newsDataBucketArticleLimit,
 			Requests: []newsDataRequest{
 				{
 					Endpoint: "latest",
@@ -146,28 +159,110 @@ func newsDataRegionRequests() []newsDataBucketRequest {
 		newsDataRegionRequest("us", "U.S.", "us"),
 		newsDataRegionRequest("japan", "Japan", "jp"),
 		newsDataRegionRequest("china_hong_kong_taiwan", "China / Hong Kong / Taiwan", "cn,hk,tw"),
-		newsDataRegionRequest("asia_ex_japan", "Asia ex-Japan", "cn,hk,tw,kr,in", "sg,id,my,th,vn", "ph,au,nz"),
-		newsDataRegionRequest("europe", "Europe", "gb,de,fr,it,es", "nl,ch,se,no,dk", "pl,be,at,ie,fi"),
-		newsDataRegionRequest("middle_east", "Middle East", "ae,sa,il,ir,iq", "qa,kw,om,bh,jo", "lb,eg,tr,ye,sy"),
+		weightedNewsDataRegionRequest("asia_ex_japan", "Asia ex-Japan",
+			newsDataWeightedCountryChunk{Countries: "cn,hk,tw,kr,in", Weight: 6},
+			newsDataWeightedCountryChunk{Countries: "sg,id,my,th,vn", Weight: 3},
+			newsDataWeightedCountryChunk{Countries: "ph,au,nz", Weight: 1},
+		),
+		weightedNewsDataRegionRequest("europe", "Europe",
+			newsDataWeightedCountryChunk{Countries: "gb,de,fr,it,es", Weight: 6},
+			newsDataWeightedCountryChunk{Countries: "nl,ch,se,no,dk", Weight: 3},
+			newsDataWeightedCountryChunk{Countries: "pl,be,at,ie,fi", Weight: 1},
+		),
+		weightedNewsDataRegionRequest("middle_east", "Middle East",
+			newsDataWeightedCountryChunk{Countries: "ae,sa,il,ir,iq", Weight: 6},
+			newsDataWeightedCountryChunk{Countries: "qa,kw,om,bh,jo", Weight: 2},
+			newsDataWeightedCountryChunk{Countries: "lb,eg,tr,ye,sy", Weight: 2},
+		),
 		newsDataRegionRequest("russia_ukraine", "Russia / Ukraine", "ru,ua"),
 	}
 }
 
 func newsDataRegionRequest(id string, name string, countryChunks ...string) newsDataBucketRequest {
+	weightedChunks := make([]newsDataWeightedCountryChunk, 0, len(countryChunks))
+	for _, countryChunk := range countryChunks {
+		weightedChunks = append(weightedChunks, newsDataWeightedCountryChunk{
+			Countries: countryChunk,
+			Weight:    1,
+		})
+	}
+	return weightedNewsDataRegionRequest(id, name, weightedChunks...)
+}
+
+func weightedNewsDataRegionRequest(id string, name string, countryChunks ...newsDataWeightedCountryChunk) newsDataBucketRequest {
 	requests := make([]newsDataRequest, 0, len(countryChunks))
 	for _, countryChunk := range countryChunks {
 		requests = append(requests, newsDataRequest{
 			Endpoint: "latest",
 			Params: map[string]string{
-				"country": countryChunk,
+				"country": countryChunk.Countries,
 			},
+			Weight: countryChunk.Weight,
 		})
 	}
+	applyWeightedNewsDataRequestSizes(requests, newsDataBucketArticleLimit)
 
 	return newsDataBucketRequest{
-		ID:       id,
-		Name:     name,
-		Requests: requests,
+		ID:          id,
+		Name:        name,
+		MaxArticles: newsDataBucketArticleLimit,
+		Requests:    requests,
+	}
+}
+
+func applyWeightedNewsDataRequestSizes(requests []newsDataRequest, maxArticles int) {
+	if len(requests) == 0 || maxArticles <= 0 {
+		return
+	}
+
+	totalWeight := 0
+	for _, request := range requests {
+		if request.Weight > 0 {
+			totalWeight += request.Weight
+		}
+	}
+	if totalWeight == 0 {
+		totalWeight = len(requests)
+	}
+
+	assigned := 0
+	for i := range requests {
+		weight := requests[i].Weight
+		if weight <= 0 {
+			weight = 1
+		}
+		requests[i].Size = maxArticles * weight / totalWeight
+		if requests[i].Size == 0 {
+			requests[i].Size = 1
+		}
+		assigned += requests[i].Size
+	}
+
+	for assigned < maxArticles {
+		for i := range requests {
+			requests[i].Size++
+			assigned++
+			if assigned == maxArticles {
+				return
+			}
+		}
+	}
+	for assigned > maxArticles {
+		reduced := false
+		for i := len(requests) - 1; i >= 0; i-- {
+			if requests[i].Size <= 1 {
+				continue
+			}
+			requests[i].Size--
+			assigned--
+			reduced = true
+			if assigned == maxArticles {
+				return
+			}
+		}
+		if !reduced {
+			return
+		}
 	}
 }
 
@@ -226,8 +321,16 @@ func fetchNewsDataBucket(ctx context.Context, apiKey string, bucketRequest newsD
 	}
 	failures := make([]NewsDataFetchFailure, 0)
 	seenLinks := make(map[string]bool)
+	maxArticles := bucketRequest.MaxArticles
+	if maxArticles <= 0 {
+		maxArticles = newsDataBucketArticleLimit
+	}
 
 	for _, request := range bucketRequest.Requests {
+		if len(bucket.Articles) >= maxArticles {
+			break
+		}
+
 		articles, err := fetchNewsDataArticles(ctx, apiKey, request, client, baseURL, limiter)
 		if err != nil {
 			failures = append(failures, NewsDataFetchFailure{
@@ -245,6 +348,9 @@ func fetchNewsDataBucket(ctx context.Context, apiKey string, bucketRequest newsD
 			}
 			seenLinks[normalizedLink] = true
 			bucket.Articles = append(bucket.Articles, article)
+			if len(bucket.Articles) >= maxArticles {
+				break
+			}
 		}
 	}
 
@@ -263,7 +369,7 @@ func fetchNewsDataArticles(ctx context.Context, apiKey string, request newsDataR
 	}
 	defer limiter.release()
 
-	requestURL, err := buildNewsDataURL(baseURL, request.Endpoint, apiKey, request.Params)
+	requestURL, err := buildNewsDataURL(baseURL, request.Endpoint, apiKey, request.Params, request.Size)
 	if err != nil {
 		return nil, err
 	}
@@ -310,20 +416,23 @@ func (limiter newsDataLimiter) release() {
 	<-limiter
 }
 
-func buildNewsDataURL(baseURL string, endpoint string, apiKey string, params map[string]string) (string, error) {
+func buildNewsDataURL(baseURL string, endpoint string, apiKey string, params map[string]string, size int) (string, error) {
 	requestURL, err := url.Parse(strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(endpoint, "/"))
 	if err != nil {
 		return "", fmt.Errorf("parse NewsData URL: %w", err)
 	}
 
+	if size <= 0 {
+		size = newsDataBucketArticleLimit
+	}
 	query := requestURL.Query()
-	query.Set("apikey", apiKey)
-	query.Set("removeduplicate", "1")
-	query.Set("prioritydomain", "top")
-	query.Set("size", "10")
 	for key, value := range params {
 		query.Set(key, value)
 	}
+	query.Set("apikey", apiKey)
+	query.Set("removeduplicate", "1")
+	query.Set("prioritydomain", "top")
+	query.Set("size", fmt.Sprintf("%d", size))
 	requestURL.RawQuery = query.Encode()
 
 	return requestURL.String(), nil
