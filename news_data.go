@@ -68,11 +68,11 @@ type newsDataArticleResponse struct {
 }
 
 func FetchNewsDataCategoryArticles(ctx context.Context, apiKey string) ([]NewsArticleBucket, []NewsDataFetchFailure) {
-	return fetchNewsDataBuckets(ctx, apiKey, newsDataCategoryRequests(), &http.Client{}, defaultNewsDataBaseURL)
+	return fetchNewsDataBuckets(ctx, apiKey, newsDataCategoryRequests(), NewHTTPClient(), defaultNewsDataBaseURL)
 }
 
 func FetchNewsDataRegionArticles(ctx context.Context, apiKey string) ([]NewsArticleBucket, []NewsDataFetchFailure) {
-	return fetchNewsDataBuckets(ctx, apiKey, newsDataRegionRequests(), &http.Client{}, defaultNewsDataBaseURL)
+	return fetchNewsDataBuckets(ctx, apiKey, newsDataRegionRequests(), NewHTTPClient(), defaultNewsDataBaseURL)
 }
 
 func countNewsArticles(buckets []NewsArticleBucket) int {
@@ -170,7 +170,7 @@ func newsDataRegionRequest(id string, name string, countryChunks ...string) news
 }
 
 func fetchNewsDataBuckets(ctx context.Context, apiKey string, bucketRequests []newsDataBucketRequest, client *http.Client, baseURL string) ([]NewsArticleBucket, []NewsDataFetchFailure) {
-	fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	fetchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	resultsChan := make(chan newsDataBucketResult, len(bucketRequests))
@@ -178,7 +178,7 @@ func fetchNewsDataBuckets(ctx context.Context, apiKey string, bucketRequests []n
 
 	for _, bucketRequest := range bucketRequests {
 		go func(bucketRequest newsDataBucketRequest) {
-			reqCtx, cancel := context.WithTimeout(fetchCtx, 5*time.Second)
+			reqCtx, cancel := context.WithTimeout(fetchCtx, 15*time.Second)
 			defer cancel()
 
 			bucket, failures := fetchNewsDataBucket(reqCtx, apiKey, bucketRequest, client, baseURL, limiter)

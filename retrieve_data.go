@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	marketValuesFilePath = "data/market_values.json"
-	newsDataFilePath     = "data/news_data.json"
+	marketValuesFilePath = "cache/market_values.json"
+	newsDataFilePath     = "cache/news_data.json"
 )
 
 type cachedNewsDataJSON struct {
@@ -58,13 +58,15 @@ func RetrieveData(ctx context.Context, cfg config) ([]MarketValue, []NewsArticle
 		}{Values: marketValues, Failures: fetchFailures}
 	}()
 	go func() {
-		// News data shall be fetched sequentially to avoid getting rate limited.
+		// [NOTE] News data shall be fetched sequentially, since the API rate limit in free tier is too low.
 		categoryBuckets, categoryFetchFailures := FetchNewsDataCategoryArticles(ctx, cfg.NewsDataAPIKey)
 		categoryBucketsChan <- struct {
 			Buckets  []NewsArticleBucket
 			Failures []NewsDataFetchFailure
 		}{Buckets: categoryBuckets, Failures: categoryFetchFailures}
 
+	}()
+	go func() {
 		regionBuckets, regionFetchFailures := FetchNewsDataRegionArticles(ctx, cfg.NewsDataAPIKey)
 		regionBucketsChan <- struct {
 			Buckets  []NewsArticleBucket

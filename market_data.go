@@ -101,7 +101,7 @@ type yahooChartResponse struct {
 }
 
 func FetchYahooMarketValues(ctx context.Context, instruments []Instrument) ([]MarketValue, []FetchFailure) {
-	return fetchYahooMarketValues(ctx, instruments, &http.Client{}, defaultYahooChartBaseURL)
+	return fetchYahooMarketValues(ctx, instruments, NewHTTPClient(), defaultYahooChartBaseURL)
 }
 
 func fetchYahooMarketValues(ctx context.Context, instruments []Instrument, client *http.Client, baseURL string) ([]MarketValue, []FetchFailure) {
@@ -161,6 +161,7 @@ func fetchYahooMarketValues(ctx context.Context, instruments []Instrument, clien
 			}
 		}
 	}
+	slog.Debug("Yahoo Finance fetch completed", "success_count", len(marketValues), "failure_count", len(fetchFailures))
 	return marketValues, fetchFailures
 }
 
