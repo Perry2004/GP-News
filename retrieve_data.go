@@ -1,0 +1,159 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+)
+
+const (
+	marketValuesFilePath = "data/market_values.json"
+	newsDataFilePath     = "data/news_data.json"
+)
+
+type cachedNewsDataJSON struct {
+	CategoryBuckets []NewsArticleBucket `json:"category_buckets"`
+	RegionBuckets   []NewsArticleBucket `json:"region_buckets"`
+}
+
+func RetrieveData(ctx context.Context, cfg config) ([]MarketValue, []NewsArticleBucket, []NewsArticleBucket, error) {
+	if !cfg.EnableFetching {
+		slog.Info("Fetching disabled; loading cached data JSON", "market_file", marketValuesFilePath, "news_file", newsDataFilePath)
+		marketValues, categoryBuckets, regionBuckets, err := LoadDataJSON(marketValuesFilePath, newsDataFilePath)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		slog.Info("Cached data JSON loaded",
+			"market_count", len(marketValues),
+			"category_bucket_count", len(categoryBuckets),
+			"region_bucket_count", len(regionBuckets),
+			"article_count", countNewsArticles(categoryBuckets)+countNewsArticles(regionBuckets),
+		)
+		return marketValues, categoryBuckets, regionBuckets, nil
+	}
+
+	marketValuesChan := make(chan struct {
+		Values   []MarketValue
+		Failures []FetchFailure
+	}, 1)
+
+	categoryBucketsChan := make(chan struct {
+		Buckets  []NewsArticleBucket
+		Failures []NewsDataFetchFailure
+	}, 1)
+
+	regionBucketsChan := make(chan struct {
+		Buckets  []NewsArticleBucket
+		Failures []NewsDataFetchFailure
+	}, 1)
+
+	go func() {
+		marketValues, fetchFailures := FetchYahooMarketValues(ctx, yahooFinanceInstruments())
+		marketValuesChan <- struct {
+			Values   []MarketValue
+			Failures []FetchFailure
+		}{Values: marketValues, Failures: fetchFailures}
+	}()
+	go func() {
+		// News data shall be fetched sequentially to avoid getting rate limited.
+		categoryBuckets, categoryFetchFailures := FetchNewsDataCategoryArticles(ctx, cfg.NewsDataAPIKey)
+		categoryBucketsChan <- struct {
+			Buckets  []NewsArticleBucket
+			Failures []NewsDataFetchFailure
+		}{Buckets: categoryBuckets, Failures: categoryFetchFailures}
+
+		regionBuckets, regionFetchFailures := FetchNewsDataRegionArticles(ctx, cfg.NewsDataAPIKey)
+		regionBucketsChan <- struct {
+			Buckets  []NewsArticleBucket
+			Failures []NewsDataFetchFailure
+		}{Buckets: regionBuckets, Failures: regionFetchFailures}
+	}()
+
+	var marketValues []MarketValue
+	var categoryBuckets []NewsArticleBucket
+	var regionBuckets []NewsArticleBucket
+
+	for i := 0; i < 3; i++ {
+		select {
+		case marketData := <-marketValuesChan:
+			marketValues = marketData.Values
+			fetchFailures := marketData.Failures
+			slog.Info("Yahoo Finance market snapshot fetched", "success_count", len(marketValues), "failure_count", len(fetchFailures))
+		case categoryBucketsValues := <-categoryBucketsChan:
+			categoryBuckets = categoryBucketsValues.Buckets
+			categoryFetchFailures := categoryBucketsValues.Failures
+			slog.Info("NewsData category articles fetched", "bucket_count", len(categoryBuckets), "article_count", countNewsArticles(categoryBuckets), "failure_count", len(categoryFetchFailures))
+		case regionBucketsValues := <-regionBucketsChan:
+			regionBuckets = regionBucketsValues.Buckets
+			regionFetchFailures := regionBucketsValues.Failures
+			slog.Info("NewsData region articles fetched", "bucket_count", len(regionBuckets), "article_count", countNewsArticles(regionBuckets), "failure_count", len(regionFetchFailures))
+		}
+	}
+
+	if cfg.PersistData {
+		if err := StoreDataJSON(marketValuesFilePath, newsDataFilePath, marketValues, categoryBuckets, regionBuckets); err != nil {
+			slog.Error("Failed to store data JSON", "error", err)
+		} else {
+			slog.Info("Data JSON files stored successfully", "market_file", marketValuesFilePath, "news_file", newsDataFilePath)
+		}
+	} else {
+		slog.Info("Data persistence disabled; skipping JSON file storage")
+	}
+
+	return marketValues, categoryBuckets, regionBuckets, nil
+}
+
+func StoreDataJSON(marketFilePath string, newsFilePath string, marketValues []MarketValue, categoryBuckets []NewsArticleBucket, regionBuckets []NewsArticleBucket) error {
+	if err := writeJSONToFile(marketFilePath, marketValues); err != nil {
+		return fmt.Errorf("failed to write market values JSON: %w", err)
+	}
+	if err := writeJSONToFile(newsFilePath, cachedNewsDataJSON{
+		CategoryBuckets: categoryBuckets,
+		RegionBuckets:   regionBuckets,
+	}); err != nil {
+		return fmt.Errorf("failed to write news data JSON: %w", err)
+	}
+	return nil
+}
+
+func LoadDataJSON(marketFilePath string, newsFilePath string) ([]MarketValue, []NewsArticleBucket, []NewsArticleBucket, error) {
+	var marketValues []MarketValue
+	if err := readJSONFromFile(marketFilePath, &marketValues); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to read market values JSON: %w", err)
+	}
+
+	var newsData cachedNewsDataJSON
+	if err := readJSONFromFile(newsFilePath, &newsData); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to read news data JSON: %w", err)
+	}
+
+	return marketValues, newsData.CategoryBuckets, newsData.RegionBuckets, nil
+}
+
+func writeJSONToFile(filePath string, data any) error {
+	jsonBytes, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal JSON: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		return fmt.Errorf("create directory: %w", err)
+	}
+	if err := os.WriteFile(filePath, jsonBytes, 0644); err != nil {
+		return fmt.Errorf("write file: %w", err)
+	}
+	return nil
+}
+
+func readJSONFromFile(filePath string, target any) error {
+	jsonBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("read file: %w", err)
+	}
+	if err := json.Unmarshal(jsonBytes, target); err != nil {
+		return fmt.Errorf("unmarshal JSON: %w", err)
+	}
+	return nil
+}
