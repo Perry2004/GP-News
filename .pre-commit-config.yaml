@@ -14,9 +14,15 @@ repos:
 
 - repo: local
   hooks:
-    - id: make-check
-      name: make check
-      entry: make check
+    - id: make-go-check
+      name: make go-check
+      entry: make go-check
       language: system
       pass_filenames: false
       files: '(\.go$|^go\.(mod|sum)$|^Makefile$)'
+    - id: make-email-template-check
+      name: make email-template-check
+      entry: make email-template-check
+      language: system
+      pass_filenames: false
+      files: '^email/template/.*\.(tsx|ts|json|ya?ml)$|^email/template/pnpm-lock\.yaml$|^Makefile$'
