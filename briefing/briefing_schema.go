@@ -90,10 +90,10 @@ type MarketSnapshotItem struct {
 }
 
 type TopNewsByTopic struct {
-	MarketsMacro        []NewsCard `json:"markets_macro"`
-	PoliticsPolicy      []NewsCard `json:"politics_policy"`
-	WarGeopoliticalRisk []NewsCard `json:"war_geopolitical_risk"`
-	TechnologyAI        []NewsCard `json:"technology_ai"`
+	MarketsMacro        []NewsCard `json:"markets_macro" jsonschema_description:"Markets and macro full news cards. The total number of cards across all top_news_by_topic arrays must be 5 to 15."`
+	PoliticsPolicy      []NewsCard `json:"politics_policy" jsonschema_description:"Politics and policy full news cards. The total number of cards across all top_news_by_topic arrays must be 5 to 15."`
+	WarGeopoliticalRisk []NewsCard `json:"war_geopolitical_risk" jsonschema_description:"War and geopolitical risk full news cards. The total number of cards across all top_news_by_topic arrays must be 5 to 15."`
+	TechnologyAI        []NewsCard `json:"technology_ai" jsonschema_description:"Technology and AI full news cards. The total number of cards across all top_news_by_topic arrays must be 5 to 15."`
 }
 
 type NewsCard struct {

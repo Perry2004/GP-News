@@ -2,6 +2,7 @@ package briefing
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -147,7 +148,13 @@ func TestGenerateProcessedNewsUsesInputArticleID(t *testing.T) {
 func TestGenerateProcessedNewsRejectsUnknownStructuredFields(t *testing.T) {
 	t.Parallel()
 
+	var mu sync.Mutex
+	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		callCount++
+		mu.Unlock()
+
 		response := map[string]any{
 			"id":       "chatcmpl-test",
 			"object":   "chat.completion",
@@ -194,6 +201,56 @@ func TestGenerateProcessedNewsRejectsUnknownStructuredFields(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), `unknown field "include"`) {
 		t.Fatalf("GenerateProcessedNews() error = %v, want unknown include field", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if callCount != maxStructuredDecodeAttempts {
+		t.Fatalf("call count = %d, want %d", callCount, maxStructuredDecodeAttempts)
+	}
+}
+
+func TestGenerateProcessedNewsRetriesMalformedStructuredJSON(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		callCount++
+		currentCall := callCount
+		mu.Unlock()
+
+		if currentCall < maxStructuredDecodeAttempts {
+			writeChatContent(t, w, `{"headline":"cut off`)
+			return
+		}
+		writeChatContent(t, w, processedNewsJSON("a1", true, "Headline", "Summary."))
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{
+		BaseURL: server.URL,
+		APIKey:  "test-key",
+		Model:   TestModel,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	output, err := g.GenerateProcessedNews(t.Context(), ProcessNewsInput{
+		BriefingDate: "2026-05-30",
+		Article:      ArticleInput{ID: "a1", Title: "Headline", Link: "https://example.test/a1"},
+	})
+	if err != nil {
+		t.Fatalf("GenerateProcessedNews() error = %v", err)
+	}
+	if output.Headline != "Headline" {
+		t.Fatalf("headline = %q, want Headline", output.Headline)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if callCount != maxStructuredDecodeAttempts {
+		t.Fatalf("call count = %d, want %d", callCount, maxStructuredDecodeAttempts)
 	}
 }
 
@@ -254,6 +311,17 @@ func TestOpenRouterResponseDetails(t *testing.T) {
 	}
 	if !strings.Contains(metadata, "selected=AkashML") {
 		t.Fatalf("metadata = %q, want selected provider summary", metadata)
+	}
+
+	provider, metadata = openRouterResponseDetails(`{
+		"provider":"Morph",
+		"metadata":{"selected_provider":"Morph"}
+	}`)
+	if provider != "Morph" {
+		t.Fatalf("provider = %q, want Morph", provider)
+	}
+	if !strings.Contains(metadata, "selected_provider") {
+		t.Fatalf("metadata = %q, want generic metadata fallback", metadata)
 	}
 }
 
@@ -488,6 +556,106 @@ func TestGenerateBriefingPassesReviewedNewsAndReviewSummaryToFinalComposer(t *te
 	}
 }
 
+func TestGenerateFinalBriefingRetriesInvalidNewsCardCount(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	var finalRequests []map[string]any
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		if got := responseSchemaName(requestBody); got != "briefing_email" {
+			t.Fatalf("response schema = %q, want briefing_email", got)
+		}
+
+		mu.Lock()
+		finalRequests = append(finalRequests, requestBody)
+		callCount := len(finalRequests)
+		mu.Unlock()
+
+		if callCount == 1 {
+			writeChatContent(t, w, briefingEmailJSONWithCardCount(20))
+			return
+		}
+		writeChatContent(t, w, briefingEmailJSONWithCardCount(10))
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	output, err := g.generateFinalBriefing(t.Context(), newBriefingAgentState(BriefingAgentInput{
+		BriefingDate: "2026-05-30",
+		Session:      "Morning",
+	}, nil))
+	if err != nil {
+		t.Fatalf("generateFinalBriefing() error = %v", err)
+	}
+	if got := finalNewsCardCount(output); got != 10 {
+		t.Fatalf("final news card count = %d, want 10", got)
+	}
+	if len(finalRequests) != 2 {
+		t.Fatalf("final request count = %d, want 2", len(finalRequests))
+	}
+	retrySystemPrompt := messageContent(t, requestMessages(t, finalRequests[1])[0])
+	for _, want := range []string{"previous final briefing had 20", "5 to 15 total full news card range"} {
+		if !strings.Contains(retrySystemPrompt, want) {
+			t.Fatalf("retry prompt missing %q:\n%s", want, retrySystemPrompt)
+		}
+	}
+}
+
+func TestGenerateFinalBriefingFailsAfterInvalidNewsCardCountRetry(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	finalCallCount := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		if got := responseSchemaName(requestBody); got != "briefing_email" {
+			t.Fatalf("response schema = %q, want briefing_email", got)
+		}
+
+		mu.Lock()
+		finalCallCount++
+		mu.Unlock()
+
+		writeChatContent(t, w, briefingEmailJSONWithCardCount(20))
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	_, err = g.generateFinalBriefing(t.Context(), newBriefingAgentState(BriefingAgentInput{
+		BriefingDate: "2026-05-30",
+		Session:      "Morning",
+	}, nil))
+	if err == nil {
+		t.Fatal("generateFinalBriefing() error = nil, want invalid card count error")
+	}
+	if !strings.Contains(err.Error(), "20 total full news cards") || !strings.Contains(err.Error(), "want 5 to 15") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if finalCallCount != 2 {
+		t.Fatalf("final call count = %d, want 2", finalCallCount)
+	}
+}
+
 func TestAgentToolsExposeContextForAnyValidArticleAndEnforceFinishGate(t *testing.T) {
 	t.Parallel()
 
@@ -687,6 +855,21 @@ func TestReviewSystemPromptRequiresToolOnlyReviewUntilFinish(t *testing.T) {
 	}
 }
 
+func TestBriefingSystemPromptDefinesFullNewsCardLimit(t *testing.T) {
+	t.Parallel()
+
+	prompt := briefingSystemPrompt()
+	for _, want := range []string{
+		"5 to 15 total full news cards across top_news_by_topic",
+		"len(markets_macro) + len(politics_policy) + len(war_geopolitical_risk) + len(technology_ai)",
+		"never exceed 15 total full news cards",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("briefing prompt missing %q:\n%s", want, prompt)
+		}
+	}
+}
+
 func processedNewsJSON(articleID string, keep bool, headline string, summary string) string {
 	data, _ := json.Marshal(ProcessedNews{
 		ArticleID:            articleID,
@@ -708,6 +891,10 @@ func processedNewsJSON(articleID string, keep bool, headline string, summary str
 }
 
 func briefingEmailJSON() string {
+	return briefingEmailJSONWithCardCount(finalNewsCardMin)
+}
+
+func briefingEmailJSONWithCardCount(cardCount int) string {
 	data, _ := json.Marshal(BriefingEmail{
 		Subject:             "GP News",
 		CriticalityScore:    5,
@@ -717,12 +904,43 @@ func briefingEmailJSON() string {
 		ReadThisFirst:       []string{"One", "Two", "Three"},
 		MacroDataWatch:      []string{},
 		PolicySignalWatch:   []string{},
+		TopNewsByTopic:      topNewsByTopicWithCardCount(cardCount),
 		RegionalRadar:       []RegionalRadar{},
 		WatchNext:           []string{},
 		WhyThisMattersToday: "Markets are watching rates.",
 		Sources:             []BriefingSource{},
 	})
 	return string(data)
+}
+
+func topNewsByTopicWithCardCount(cardCount int) TopNewsByTopic {
+	var topics TopNewsByTopic
+	for i := 0; i < cardCount; i++ {
+		card := NewsCard{
+			Region:        "Global",
+			Headline:      fmt.Sprintf("Headline %02d", i+1),
+			Summary:       "Summary.",
+			WhyItMatters:  "Why it matters.",
+			Sources:       []string{"example.test"},
+			PriorityScore: 5,
+			Confidence:    "High",
+		}
+		switch i % 4 {
+		case 0:
+			card.Topic = "Markets & Macro"
+			topics.MarketsMacro = append(topics.MarketsMacro, card)
+		case 1:
+			card.Topic = "Politics & Policy"
+			topics.PoliticsPolicy = append(topics.PoliticsPolicy, card)
+		case 2:
+			card.Topic = "War & Geopolitical Risk"
+			topics.WarGeopoliticalRisk = append(topics.WarGeopoliticalRisk, card)
+		default:
+			card.Topic = "Technology & AI"
+			topics.TechnologyAI = append(topics.TechnologyAI, card)
+		}
+	}
+	return topics
 }
 
 func writeChatContent(t *testing.T, w http.ResponseWriter, content string) {

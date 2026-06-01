@@ -21,6 +21,10 @@ flowchart TD
         P --> Q{Gate final generation}
         Q -- no --> I
         Q -- yes --> R[Build final BriefingInput]
+        T{5-15 full news cards?}
+        T -- yes --> U[BriefingEmail]
+        T -- no, first failure --> V[Retry final generation with count correction]
+        T -- no, retry failed --> W[Return error]
     end
 
     subgraph LLM[LLM]
@@ -39,7 +43,8 @@ flowchart TD
     J -- complete review --> P
     N --> R
     R --> S
-    S --> U[BriefingEmail]
+    S --> T
+    V --> S
 ```
 
 Graph key:
@@ -102,6 +107,7 @@ Graph key:
    - After review is complete, the final model call receives market data, selected `ReviewedNews`, and `ReviewSummary`.
    - Selected reviewed news is ordered by descending `priority_score`.
    - Full article content is not passed to final generation by default; only compact review notes, corrections, and additional context are carried forward.
+   - The final result must contain 5 to 15 total full news cards across all `top_news_by_topic` arrays combined. If the model returns a count outside that range, generation is retried once and then fails loudly.
    - This phase also uses the strict JSON schema response format, with the `BriefingEmail` schema.
    - It returns the existing `BriefingEmail` JSON shape used by the email template.
    - The old post-generation verification step is no longer part of the runtime path.
