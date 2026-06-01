@@ -93,6 +93,8 @@ Follow these rules:
 - every market item must include asset, level, daily_change, timestamp, driver, and source
 - never claim a daily move unless daily_change is present in supplied market data
 - source every major news card from supplied reviewed news only
+- every top_news_by_topic card must include sources as label/url objects from supplied reviewed news
+- every regional_radar item must include sources as label/url objects from supplied reviewed news
 - use review corrections and additional context when they clarify or supersede first-pass processed summaries
 - use review_summary for global framing, but do not mention the review process itself
 - keep paragraphs short and avoid generic filler

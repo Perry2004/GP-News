@@ -108,8 +108,9 @@ Graph key:
    - Selected reviewed news is ordered by descending `priority_score`.
    - Full article content is not passed to final generation by default; only compact review notes, corrections, and additional context are carried forward.
    - The final result must contain 5 to 15 total full news cards across all `top_news_by_topic` arrays combined. If the model returns a count outside that range, generation is retried once and then fails loudly.
+   - Full news cards and regional radar items carry their own `sources` label/url objects; there is no separate top-level sources section.
    - This phase also uses the strict JSON schema response format, with the `BriefingEmail` schema.
-   - It returns the existing `BriefingEmail` JSON shape used by the email template.
+   - It returns the current `BriefingEmail` JSON shape used by the email template.
    - The old post-generation verification step is no longer part of the runtime path.
 
 ## OpenRouter Notes

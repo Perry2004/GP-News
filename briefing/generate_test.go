@@ -863,6 +863,8 @@ func TestBriefingSystemPromptDefinesFullNewsCardLimit(t *testing.T) {
 		"5 to 15 total full news cards across top_news_by_topic",
 		"len(markets_macro) + len(politics_policy) + len(war_geopolitical_risk) + len(technology_ai)",
 		"never exceed 15 total full news cards",
+		"every top_news_by_topic card must include sources as label/url objects",
+		"every regional_radar item must include sources as label/url objects",
 	} {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("briefing prompt missing %q:\n%s", want, prompt)
@@ -905,12 +907,15 @@ func briefingEmailJSONWithCardCount(cardCount int) string {
 		MacroDataWatch:      []string{},
 		PolicySignalWatch:   []string{},
 		TopNewsByTopic:      topNewsByTopicWithCardCount(cardCount),
-		RegionalRadar:       []RegionalRadar{},
+		RegionalRadar:       []RegionalRadar{{Region: "Global", Sentence: "Markets are watching rates.", Sources: testBriefingSources()}},
 		WatchNext:           []string{},
 		WhyThisMattersToday: "Markets are watching rates.",
-		Sources:             []BriefingSource{},
 	})
 	return string(data)
+}
+
+func testBriefingSources() []BriefingSource {
+	return []BriefingSource{{Label: "example.test", URL: "https://example.test"}}
 }
 
 func topNewsByTopicWithCardCount(cardCount int) TopNewsByTopic {
@@ -921,7 +926,7 @@ func topNewsByTopicWithCardCount(cardCount int) TopNewsByTopic {
 			Headline:      fmt.Sprintf("Headline %02d", i+1),
 			Summary:       "Summary.",
 			WhyItMatters:  "Why it matters.",
-			Sources:       []string{"example.test"},
+			Sources:       testBriefingSources(),
 			PriorityScore: 5,
 			Confidence:    "High",
 		}

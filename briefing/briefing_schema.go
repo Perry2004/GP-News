@@ -53,24 +53,23 @@ type BriefingInput struct {
 }
 
 type BriefingEmail struct {
-	Subject                string           `json:"subject"`
-	CriticalityScore       float64          `json:"criticality_score" jsonschema:"minimum=0,maximum=10"`
-	PriorityLevel          string           `json:"priority_level" jsonschema:"enum=Low,enum=Watch,enum=Important,enum=Critical"`
-	HighPriorityTag        bool             `json:"high_priority_tag"`
-	MainDriver             string           `json:"main_driver"`
-	TodaysSignal           string           `json:"todays_signal"`
-	ReadThisFirst          []string         `json:"read_this_first"`
-	MarketSnapshot         MarketSnapshot   `json:"market_snapshot"`
-	MacroDataWatch         []string         `json:"macro_data_watch"`
-	PolicySignalWatch      []string         `json:"policy_signal_watch"`
-	TopNewsByTopic         TopNewsByTopic   `json:"top_news_by_topic"`
-	RegionalRadar          []RegionalRadar  `json:"regional_radar"`
-	ToneFramingDifferences []string         `json:"tone_framing_differences"`
-	TechTendency           []string         `json:"tech_tendency"`
-	PolymarketWatch        []string         `json:"polymarket_watch"`
-	WatchNext              []string         `json:"watch_next"`
-	WhyThisMattersToday    string           `json:"why_this_matters_today"`
-	Sources                []BriefingSource `json:"sources"`
+	Subject                string          `json:"subject"`
+	CriticalityScore       float64         `json:"criticality_score" jsonschema:"minimum=0,maximum=10"`
+	PriorityLevel          string          `json:"priority_level" jsonschema:"enum=Low,enum=Watch,enum=Important,enum=Critical"`
+	HighPriorityTag        bool            `json:"high_priority_tag"`
+	MainDriver             string          `json:"main_driver"`
+	TodaysSignal           string          `json:"todays_signal"`
+	ReadThisFirst          []string        `json:"read_this_first"`
+	MarketSnapshot         MarketSnapshot  `json:"market_snapshot"`
+	MacroDataWatch         []string        `json:"macro_data_watch"`
+	PolicySignalWatch      []string        `json:"policy_signal_watch"`
+	TopNewsByTopic         TopNewsByTopic  `json:"top_news_by_topic"`
+	RegionalRadar          []RegionalRadar `json:"regional_radar"`
+	ToneFramingDifferences []string        `json:"tone_framing_differences"`
+	TechTendency           []string        `json:"tech_tendency"`
+	PolymarketWatch        []string        `json:"polymarket_watch"`
+	WatchNext              []string        `json:"watch_next"`
+	WhyThisMattersToday    string          `json:"why_this_matters_today"`
 }
 
 type MarketSnapshot struct {
@@ -97,20 +96,21 @@ type TopNewsByTopic struct {
 }
 
 type NewsCard struct {
-	Topic         string   `json:"topic" jsonschema:"enum=Markets & Macro,enum=Politics & Policy,enum=War & Geopolitical Risk,enum=Technology & AI"`
-	Region        string   `json:"region"`
-	Headline      string   `json:"headline"`
-	Summary       string   `json:"summary"`
-	WhyItMatters  string   `json:"why_it_matters"`
-	Sources       []string `json:"sources"`
-	PriorityScore float64  `json:"priority_score" jsonschema:"minimum=0,maximum=10"`
-	Confidence    string   `json:"confidence" jsonschema:"enum=High,enum=Medium,enum=Low"`
-	MustRead      bool     `json:"must_read"`
+	Topic         string           `json:"topic" jsonschema:"enum=Markets & Macro,enum=Politics & Policy,enum=War & Geopolitical Risk,enum=Technology & AI"`
+	Region        string           `json:"region"`
+	Headline      string           `json:"headline"`
+	Summary       string           `json:"summary"`
+	WhyItMatters  string           `json:"why_it_matters"`
+	Sources       []BriefingSource `json:"sources" jsonschema_description:"Source labels and URLs for this news card, taken from supplied reviewed news."`
+	PriorityScore float64          `json:"priority_score" jsonschema:"minimum=0,maximum=10"`
+	Confidence    string           `json:"confidence" jsonschema:"enum=High,enum=Medium,enum=Low"`
+	MustRead      bool             `json:"must_read"`
 }
 
 type RegionalRadar struct {
-	Region   string `json:"region"`
-	Sentence string `json:"sentence"`
+	Region   string           `json:"region"`
+	Sentence string           `json:"sentence"`
+	Sources  []BriefingSource `json:"sources" jsonschema_description:"Source labels and URLs for this regional radar item, taken from supplied reviewed news."`
 }
 
 type BriefingSource struct {
