@@ -1,4 +1,4 @@
-package data
+package ingest
 
 import (
 	"bytes"
@@ -245,7 +245,9 @@ func extractNewsContent(ctx context.Context, articleURL string, client *http.Cli
 	if err != nil {
 		return newsContentExtractionResult{ExtractionError: fmt.Errorf("request failed: %w", err).Error()}
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, newsContentBodyLimit))
 	if err != nil {

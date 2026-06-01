@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	"github.com/caarlos0/env/v11"
 )
 
 func TestMaskConfigForLogging(t *testing.T) {
@@ -24,6 +26,19 @@ func TestMaskConfigForLogging(t *testing.T) {
 	}
 	if cfg.NewsDataAPIKey != "secret-news-data-key" {
 		t.Fatal("maskConfigForLogging mutated the original config")
+	}
+}
+
+func TestConfigParsesProviderIgnoreList(t *testing.T) {
+	t.Setenv("LLM_PROVIDER_IGNORE", "akashml,morph")
+
+	cfg, err := env.ParseAs[config]()
+	if err != nil {
+		t.Fatalf("ParseAs() error = %v", err)
+	}
+
+	if len(cfg.LLMProviderIgnore) != 2 || cfg.LLMProviderIgnore[0] != "akashml" || cfg.LLMProviderIgnore[1] != "morph" {
+		t.Fatalf("LLMProviderIgnore = %#v, want [akashml morph]", cfg.LLMProviderIgnore)
 	}
 }
 

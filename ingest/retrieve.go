@@ -1,4 +1,4 @@
-package data
+package ingest
 
 import (
 	"context"
@@ -32,9 +32,9 @@ func RetrieveData(ctx context.Context, cfg Config) ([]MarketValue, []NewsArticle
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		slog.Debug("Cached market values", "market_values", marketValues)
-		slog.Debug("Cached category buckets", "category_buckets", categoryBuckets)
-		slog.Debug("Cached region buckets", "region_buckets", regionBuckets)
+		// slog.Debug("Cached market values", "market_values", marketValues)
+		// slog.Debug("Cached category buckets", "category_buckets", categoryBuckets)
+		// slog.Debug("Cached region buckets", "region_buckets", regionBuckets)
 		slog.Info("Cached data JSON loaded",
 			"market_count", len(marketValues),
 			"category_bucket_count", len(categoryBuckets),

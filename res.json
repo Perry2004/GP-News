@@ -1,0 +1,717 @@
+{
+    "time": "2026-05-31T20:10:27.035745-07:00",
+    "level": "INFO",
+    "msg": "Generated briefing",
+    "output": {
+        "subject": "Night Briefing – May 31, 2026",
+        "criticality_score": 9,
+        "priority_level": "Critical",
+        "high_priority_tag": true,
+        "main_driver": "Geopolitical escalation – NATO, Middle East, Asia-Pacific",
+        "todays_signal": "Multiple flashpoints converge: Russian drone hits NATO Romania, Israel crosses Litani, US-Iran talks stall, US demands Asian allies boost defense spending. Risk premiums rise across energy, defense, and safe havens.",
+        "read_this_first": [
+            "Russian drone strike on NATO member Romania – two killed, potential Article 5 trigger. (France 24)",
+            "Netanyahu privately fears US may strike 'bad interim deal' with Iran – oil and Middle East risk in focus. (NDTV)",
+            "US Defense Secretary Hegseth demands Asian allies spend 3.5% of GDP on defense – major shift in US posture. (RFI)"
+        ],
+        "market_snapshot": {
+            "equity_indices": [
+                {
+                    "asset": "S&P 500",
+                    "level": "7580.06",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T14:03:37-07:00",
+                    "driver": "Elevated risk appetite amid geopolitical tensions",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Dow Jones Industrial Average",
+                    "level": "51032.46",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T14:03:44-07:00",
+                    "driver": "Mixed sentiment, defense stocks support",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "NASDAQ Composite",
+                    "level": "26972.62",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T14:15:59-07:00",
+                    "driver": "Tech sector resilience",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Euro Stoxx 50",
+                    "level": "6050.54",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T09:00:00-07:00",
+                    "driver": "Geopolitical risk weighing on European equities",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "DAX",
+                    "level": "25104.7",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T09:00:00-07:00",
+                    "driver": "Defense sector gains offset broader caution",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "CAC 40",
+                    "level": "8183.34",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T09:05:02-07:00",
+                    "driver": "Mixed, energy and defense support",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "FTSE 100",
+                    "level": "10409.28",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T08:45:59-07:00",
+                    "driver": "Commodity and defense stocks lift",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Nikkei 225",
+                    "level": "66329.5",
+                    "daily_change": "",
+                    "timestamp": "2026-05-28T23:45:03-07:00",
+                    "driver": "Asia-Pacific defense spending boost",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Hang Seng Index",
+                    "level": "25182.39",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T01:08:50-07:00",
+                    "driver": "China stimulus hopes vs geopolitical headwinds",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Shanghai Composite",
+                    "level": "4068.569",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T00:00:29-07:00",
+                    "driver": "Mixed, trade tensions weigh",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "CSI 300",
+                    "level": "4892.121",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T00:00:29-07:00",
+                    "driver": "Domestic policy support vs external risks",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "KOSPI",
+                    "level": "8476.15",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T02:05:40-07:00",
+                    "driver": "Defense spending expectations",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "ASX 200",
+                    "level": "8731.7",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T00:01:14-07:00",
+                    "driver": "Commodity prices support",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Russell 2000",
+                    "level": "2919.3384",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T13:30:08-07:00",
+                    "driver": "Small-cap underperformance amid uncertainty",
+                    "source": "yahoo_chart_api"
+                }
+            ],
+            "fx": [
+                {
+                    "asset": "EUR/USD",
+                    "level": "1.1659",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T14:29:50-07:00",
+                    "driver": "Dollar weakness on Fed rate cut expectations",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "GBP/USD",
+                    "level": "1.3457",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T14:29:50-07:00",
+                    "driver": "Sterling supported by rate differential",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "USD/JPY",
+                    "level": "159.255",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T21:21:11-07:00",
+                    "driver": "Yen weakness on BOJ policy divergence",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "EUR/JPY",
+                    "level": "185.709",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T14:28:50-07:00",
+                    "driver": "Euro strength vs yen",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "AUD/USD",
+                    "level": "0.7186",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T21:50:52-07:00",
+                    "driver": "Commodity prices support Aussie",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "USD/CNY",
+                    "level": "6.7657",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T14:32:29-07:00",
+                    "driver": "PBOC managed depreciation",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "USD/CNH",
+                    "level": "6.7628",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T13:59:44-07:00",
+                    "driver": "Offshore yuan under pressure",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "DXY",
+                    "level": "98.942",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T13:59:59-07:00",
+                    "driver": "Dollar soft on rate cut bets",
+                    "source": "yahoo_chart_api"
+                }
+            ],
+            "rates_bonds": [
+                {
+                    "asset": "U.S. 10Y Treasury yield",
+                    "level": "4.453",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T11:59:55-07:00",
+                    "driver": "Safe-haven flows vs inflation expectations",
+                    "source": "yahoo_chart_api"
+                }
+            ],
+            "commodities_crypto_risk": [
+                {
+                    "asset": "Gold futures",
+                    "level": "4593",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T13:59:58-07:00",
+                    "driver": "Safe-haven demand amid geopolitical tensions",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Copper futures",
+                    "level": "6.389",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T13:59:55-07:00",
+                    "driver": "Demand concerns vs supply constraints",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "WTI crude",
+                    "level": "87.36",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T13:59:57-07:00",
+                    "driver": "Middle East conflict premium",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Brent crude",
+                    "level": "91.12",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T13:59:56-07:00",
+                    "driver": "Geopolitical risk and supply disruption fears",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Bitcoin",
+                    "level": "73756.5",
+                    "daily_change": "",
+                    "timestamp": "2026-05-30T15:24:33-07:00",
+                    "driver": "Digital safe-haven demand",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "Ethereum",
+                    "level": "2020.95",
+                    "daily_change": "",
+                    "timestamp": "2026-05-30T15:24:29-07:00",
+                    "driver": "Crypto market sentiment",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "VIX",
+                    "level": "15.32",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T13:15:01-07:00",
+                    "driver": "Moderate risk aversion",
+                    "source": "yahoo_chart_api"
+                },
+                {
+                    "asset": "SKEW",
+                    "level": "144.18",
+                    "daily_change": "",
+                    "timestamp": "2026-05-29T14:00:47-07:00",
+                    "driver": "Tail risk hedging demand",
+                    "source": "yahoo_chart_api"
+                }
+            ]
+        },
+        "macro_data_watch": [
+            "US 10Y yield at 4.453% – safe-haven flows vs inflation expectations.",
+            "Gold at $4,593 – elevated safe-haven demand.",
+            "WTI crude at $87.36, Brent at $91.12 – Middle East risk premium.",
+            "DXY at 98.94 – dollar softness on rate cut expectations.",
+            "VIX at 15.32 – moderate risk aversion."
+        ],
+        "policy_signal_watch": [
+            "Fed rate cut expectations – market pricing in cuts amid economic data.",
+            "BOJ policy divergence – yen weakness continues.",
+            "PBOC managed depreciation – yuan under pressure.",
+            "RBI policy – India's wholesale inflation divergence and monsoon risks."
+        ],
+        "top_news_by_topic": {
+            "markets_macro": [
+                {
+                    "topic": "Markets & Macro",
+                    "region": "India",
+                    "headline": "India shows ‘cautious resilience’ despite Middle East conflict: DEA",
+                    "summary": "India's DEA projects the economy will maintain 'cautious resilience' with record FDI of $94.5 billion in FY26. Risks include crude oil dependence, wholesale inflation divergence (8.3% vs retail 3.48%), and potential weak monsoon. Strait of Hormuz disruption identified as key variable.",
+                    "why_it_matters": "The DEA's review signals that India's ‘cautious resilience’ narrative is credible in the near term, but mounting risks from global crude supply, domestic wholesale inflation, and monsoon failure require active monitoring. Record FDI confirms continued investor confidence, while the wholesale-retail inflation divergence suggests margins face pressure which could eventually affect consumer prices and RBI policy. Strait of Hormuz disruption is identified as the single most consequential variable for India's external stability.",
+                    "sources": [
+                        "The Times of India"
+                    ],
+                    "priority_score": 8,
+                    "confidence": "High",
+                    "must_read": true
+                },
+                {
+                    "topic": "Markets & Macro",
+                    "region": "United States",
+                    "headline": "Zillow downgrades its home price forecast across 400-plus housing markets",
+                    "summary": "Zillow projects a 0.1% decline in US home prices from April 2026 to April 2027, a slight downgrade. US home prices currently up 0.7% YoY. Soft national market with regional variations; affordability should gradually improve as price growth stays below wage growth.",
+                    "why_it_matters": "This forecast is a key indicator for residential real estate markets, affecting portfolio exposure to housing, REITs, mortgage-backed securities, and construction companies. It signals continued subdued price growth and potential modest improvement in affordability, which could influence investor sentiment.",
+                    "sources": [
+                        "Fast Company"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                },
+                {
+                    "topic": "Markets & Macro",
+                    "region": "India",
+                    "headline": "IndiGo Sees Room To Raise Airfares Further As Costs Rise",
+                    "summary": "IndiGo CEO Rahul Bhatia said the airline may increase fares further as demand remains resilient despite higher ticket prices. The airline has already raised fares to offset rising costs, particularly fuel, and has not seen a significant drop in demand. Bhatia indicated the airline will continue testing pricing levels until demand shows elasticity. CFO Gaurav Negi noted that fuel costs have risen sharply and the airline has introduced fuel charges, but has not fully offset the impact. IndiGo expects a mid-teens increase in passenger unit revenue in Q1 FY27 based on current trends.",
+                    "why_it_matters": "As India's largest airline, IndiGo's pricing power and cost pass-through ability are key indicators for the aviation sector and broader consumer demand. The airline's ability to raise fares without dampening demand suggests resilient domestic travel appetite, which has implications for airline profitability, fuel costs, and inflation expectations in transportation.",
+                    "sources": [
+                        "NDTV Profit"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                },
+                {
+                    "topic": "Markets & Macro",
+                    "region": "India",
+                    "headline": "NSE Social Stock Exchange gets CSR boost as MCA clears corporate funding route",
+                    "summary": "India's Ministry of Corporate Affairs (MCA) has amended Schedule VII of the Companies Act, 2013, to allow companies to allocate up to 10% of their annual CSR budget to subscribe to Zero Coupon Zero Principal (ZCZP) instruments on the National Stock Exchange's Social Stock Exchange (SSE). The change, effective from May 27, 2026, is expected to widen funding avenues for non-profit organisations, enhance transparency, and scale social financing in India.",
+                    "why_it_matters": "This regulatory change provides a structured, regulated channel for corporate CSR funds to flow to social enterprises via the SSE, potentially increasing the scale and credibility of social impact investing in India. It aligns with government goals of inclusive growth and financial inclusion and could set a precedent for other markets.",
+                    "sources": [
+                        "The Economic Times"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                },
+                {
+                    "topic": "Markets & Macro",
+                    "region": "India",
+                    "headline": "Airbnb leases 46,000 sq ft office space for GCC in DLF Cyber City",
+                    "summary": "Airbnb has leased 46,437 square feet of office space in Gurugram's DLF Cyber City for its global capability centre (GCC) for five years, starting at a monthly rent of approximately ₹61.53 lakh. The lease, effective October 1, 2025, includes a 5% escalation clause. CEO Brian Chesky reaffirmed the company's long-term commitment to India, citing a growing middle class and travel-hungry Gen Z. The deal highlights the trend of GCCs driving premium office leasing in India, with GCCs accounting for 44% of office absorption in Q1 2026.",
+                    "why_it_matters": "The lease underscores Airbnb's strategic expansion in India, one of its fastest-growing markets, and reflects the broader trend of global capability centres (GCCs) fueling demand for premium commercial real estate in India. This signals sustained institutional interest in Indian office assets and could influence investor sentiment toward real estate investment trusts (REITs) and developers like DLF.",
+                    "sources": [
+                        "Business Standard"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                },
+                {
+                    "topic": "Markets & Macro",
+                    "region": "Japan",
+                    "headline": "Gasoline subsidy of 400 billion yen per month faces calls for reduction from ruling and opposition parties",
+                    "summary": "Japan's gasoline subsidy program, costing about 400 billion yen per month, is facing bipartisan pressure to be scaled back. Prime Minister Takaichi defended the policy, arguing Japanese gasoline prices are the lowest in the G7 and that the subsidy has significant economic benefits.",
+                    "why_it_matters": "The gasoline subsidy is a major fiscal expenditure. Any reduction or removal could affect consumer fuel costs, inflation, and the government's budget. The debate highlights tensions between fiscal consolidation and maintaining economic support.",
+                    "sources": [
+                        "Yomiuri Shimbun (読売新聞)"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "Medium",
+                    "must_read": false
+                }
+            ],
+            "politics_policy": [
+                {
+                    "topic": "Politics & Policy",
+                    "region": "Europe",
+                    "headline": "Criticism of BSI Framework: Pseudo-Sovereignty for the European Cloud?",
+                    "summary": "The German Federal Office for Information Security (BSI) has released its C3A (Cloud Computing Autonomy) criteria catalog aimed at defining cloud sovereignty. The European cloud association CISPE and several providers strongly criticize the framework. They argue that while it promises independence, it ultimately legitimizes the continued use of US hyperscalers as subcontractors, exposing European data to risks from extraterritorial laws like the US Cloud Act. Critics say the framework creates bureaucracy without enforcing real data protection, imposes impractical requirements on SMEs regarding source code access, and lacks provisions for interoperability and data portability. This could create a harmful precedent ahead of the EU's planned Cloud and AI Development Act (CADA).",
+                    "why_it_matters": "This article is significant for investors in European cloud and technology companies because it highlights a major regulatory debate on the definition of digital sovereignty. The BSI's C3A framework could shape the competitive landscape, potentially favoring large collaborations (e.g., SAP and Microsoft) while disadvantaging smaller European cloud providers and raising costs. The outcome may influence market share, vendor lock-in risks, and the future direction of EU cloud regulation under the upcoming CADA, impacting investment decisions in European tech infrastructure.",
+                    "sources": [
+                        "heise online"
+                    ],
+                    "priority_score": 8,
+                    "confidence": "High",
+                    "must_read": true
+                },
+                {
+                    "topic": "Politics & Policy",
+                    "region": "United Kingdom",
+                    "headline": "UK patients fuming over 'Plan B' GP ballot that could result in costly appointments",
+                    "summary": "The BMA announced plans to ballot GPs in England by June 2027 on a 'Plan B' contract, potentially introducing means-tested, subscription-based GP fees similar to NHS dentists. A pharmacist and patient responses highlight concerns about worsening health inequalities, as patients with chronic conditions would be disproportionately affected.",
+                    "why_it_matters": "The move could signal a major shift in UK primary care funding, potentially increasing out-of-pocket costs for patients and exacerbating existing health inequalities, with significant implications for NHS utilization and public health policy.",
+                    "sources": [
+                        "Daily Express"
+                    ],
+                    "priority_score": 6,
+                    "confidence": "Medium",
+                    "must_read": false
+                }
+            ],
+            "war_geopolitical_risk": [
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "Eastern Europe",
+                    "headline": "Romania says Russian drone targeting Ukraine crashes in apartment, killing two",
+                    "summary": "A Russian drone aimed at Ukraine crashed into a 10-story apartment building in Galati, Romania, near the Ukrainian border, causing a fire, two deaths, and injuries to two others. Romanian authorities attributed the incident to a Russian drone strike.",
+                    "why_it_matters": "This event marks a direct escalation of the Russia-Ukraine war into NATO territory, as a Russian drone struck a residential building in a NATO member state, causing casualties. It has immediate implications for NATO alliance cohesion, potential Article 5 discussions, and heightened geopolitical risk in Eastern Europe.",
+                    "sources": [
+                        "France 24"
+                    ],
+                    "priority_score": 9,
+                    "confidence": "High",
+                    "must_read": true
+                },
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "Middle East",
+                    "headline": "Netanyahu Worried Trump May Strike A 'Bad Interim Deal' With Iran: Report",
+                    "summary": "Israeli Prime Minister Benjamin Netanyahu has privately expressed concern that the US may strike a 'bad interim deal' with Iran that fails to address key issues like enriched uranium stockpile, missile program, and proxy group support. Netanyahu favors stronger military pressure, while the White House leans toward diplomacy. The report also notes Hezbollah drone attacks and domestic pressure from far-right ministers.",
+                    "why_it_matters": "The outcome of US-Iran negotiations directly impacts Middle East stability, oil markets, and US-Israel relations. A deal that eases sanctions could increase global oil supply and reduce geopolitical risk, but may also embolden Iran and weaken Israel's security posture.",
+                    "sources": [
+                        "NDTV"
+                    ],
+                    "priority_score": 8,
+                    "confidence": "High",
+                    "must_read": true
+                },
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "Asia-Pacific",
+                    "headline": "US Defense Secretary urges Asian allies to prepare for confrontation with China",
+                    "summary": "US Defense Secretary Pete Hegseth, speaking at the Shangri-La Dialogue in Singapore, called on Asian allies to significantly increase their military spending to 3.5% of GDP to deter what he described as China's rapid military buildup. He warned that a Pacific region dominated by any single hegemon would destroy the balance of power, and stated that the era of the US subsidizing wealthy allies' defense is over. Hegseth also noted US support for regular military contacts with China to reduce tensions and reaffirmed that the US President will decide on arms sales to Taiwan.",
+                    "why_it_matters": "This article outlines a significant shift in US defense posture in the Asia-Pacific, demanding higher spending from allies and explicitly framing China as a threat. For investors, this signals increased government expenditure on defense, potential new contracts for defense contractors, and heightened geopolitical risk that could affect supply chains, trade, and investments in the region.",
+                    "sources": [
+                        "RFI"
+                    ],
+                    "priority_score": 8,
+                    "confidence": "High",
+                    "must_read": true
+                },
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "Middle East",
+                    "headline": "Israel crosses the Litani River in Lebanon: What it means and why it matters",
+                    "summary": "Israel has crossed the Litani River in Lebanon. The article briefly explains the significance of this event and why it matters, but the extracted content is minimal and contains mostly video-related instructions and an image caption.",
+                    "why_it_matters": "An Israeli cross-border military operation into Lebanon is a major escalation in the region, potentially disrupting energy markets (oil and gas), increasing safe-haven demand (gold, USD), and impacting defense stocks. The Litani River is a strategic line south of Hezbollah's strongholds.",
+                    "sources": [
+                        "France 24"
+                    ],
+                    "priority_score": 8,
+                    "confidence": "Low",
+                    "must_read": true
+                },
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "India",
+                    "headline": "India Ready for Operation Sindoor 2.0, Says Army Chief at NDA Passing Out Parade",
+                    "summary": "Army Chief General Upendra Dwivedi stated at the 150th NDA passing out parade that Operation Sindoor is not concluded and is in a ceasefire phase; if needed, all three services are ready for Operation Sindoor 2.0. He emphasized modern warfare's transparency, the need for vigilance, and that victory depends on national unity. The Army is pursuing a 'Decade of Transformation' to become a modern, technology-enabled force.",
+                    "why_it_matters": "The Army Chief's explicit mention of readiness for Operation Sindoor 2.0 signals a potentially prolonged and escalated military posture toward Pakistan, impacting defense spending, regional stability, and investor sentiment in South Asian markets. The 'Decade of Transformation' initiative highlights shifts toward technology and modernization in Indian defense that may affect defense contractors and aerospace sectors.",
+                    "sources": [
+                        "India.com"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                },
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "Europe (Norway, Russia, France, NATO)",
+                    "headline": "Russia's Open Threat To NATO Nation Norway Over Nuclear Pact With France | Watch",
+                    "summary": "Russia issued a stark warning to Norway over its decision to deepen nuclear deterrence cooperation with France. Moscow stated that Oslo's participation in a French-led nuclear initiative threatens Russian national security and will not go unanswered, raising fears of a fresh confrontation between Russia and NATO. The warning came as Norwegian Prime Minister Jonas Gahr Støre traveled to Paris to meet French President Emmanuel Macron and sign a new defense agreement. Norway is set to join France's expanding nuclear deterrence framework, a move Oslo says is driven by security concerns over Russia's military buildup and the war in Ukraine.",
+                    "why_it_matters": "This direct threat from Russia to a NATO member over nuclear cooperation marks a significant escalation in tensions. It could lead to increased defense spending, heightened security risks in the Arctic and Northern Europe, and potential disruptions to energy supplies from Norway. The move also tests NATO's collective defense commitments and may influence European security policy.",
+                    "sources": [
+                        "Times of India"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                },
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "Europe",
+                    "headline": "Zelenskyy Warns Russia Planning New Large-Scale Attack After 600-Drone Strike",
+                    "summary": "Following an attack involving 600 drones, Ukrainian President Volodymyr Zelenskyy warned that Russia is planning a new major offensive. The report, sourced from Euronews Germany, highlights escalating drone warfare and preparations for a significant Russian military operation.",
+                    "why_it_matters": "Signals potential escalation in the Russia-Ukraine war, which could affect energy markets, defense stocks, and broader geopolitical risk sentiment.",
+                    "sources": [
+                        "Euronews Germany"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "Medium",
+                    "must_read": false
+                },
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "Middle East, China",
+                    "headline": "NBC Report Suggests US Fighter Jet Shot Down Over Iran with Chinese Missile; Beijing Denies",
+                    "summary": "NBC, citing sources, reported that an American F-15E fighter jet shot down over Iran in April was likely hit by a Chinese-made portable air defense system. China's foreign ministry denied the claim, calling it baseless. The US is still investigating. President Trump had previously stated that China assured him it would not supply weapons to Iran.",
+                    "why_it_matters": "The allegation, if true, would indicate Chinese arms supplies to Iran despite assurances, potentially escalating US-China tensions and impacting Middle East security dynamics. It could also affect diplomatic negotiations regarding Iran's nuclear program and the Strait of Hormuz blockade.",
+                    "sources": [
+                        "RT Arabic"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "Medium",
+                    "must_read": false
+                },
+                {
+                    "topic": "War & Geopolitical Risk",
+                    "region": "Middle East",
+                    "headline": "Iran Supreme Leader Advisor Accuses Trump of 'Third Betrayal of Diplomacy,' Says He Has No Intention to Negotiate",
+                    "summary": "Iranian Expediency Council member and advisor to the Supreme Leader, Mohsen Rezaei, posted on X accusing U.S. President Trump of a 'third betrayal of diplomacy.' Rezaei stated that Trump's continued naval blockade and exorbitant demands in negotiations prove he does not intend to negotiate. Meanwhile, Trump convened a Situation Room meeting on May 29 regarding a possible memorandum of understanding (MOU) on ending the war with Iran but reportedly did not make a final decision after a two-hour meeting.",
+                    "why_it_matters": "This report directly highlights ongoing tensions between the U.S. and Iran, a critical geopolitical friction point for global energy markets and investor sentiment. The accusation of bad-faith negotiations and the indecision on a war-ending MOU suggest continued uncertainty and elevated risk of escalation, which could impact oil prices and broader Middle East stability.",
+                    "sources": [
+                        "udn.com"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                }
+            ],
+            "technology_ai": [
+                {
+                    "topic": "Technology & AI",
+                    "region": "global",
+                    "headline": "Meta Reportedly Working On AI Pendant And More Smart Glasses Models",
+                    "summary": "Meta is reportedly developing an AI pendant and plans to release up to four new smart glasses models by the end of 2026, according to The Information. The company also intends to launch a business subscription service called 'Wearables for Work' and expand availability to more countries, targeting 10 million wearable sales in the second half of 2026. These efforts aim to offset the ongoing losses of its Reality Labs division, which lost $19 billion in 2025.",
+                    "why_it_matters": "Meta's aggressive push into AI wearables, including a pendant and multiple smart glasses, signals a strategic shift to monetize AI through hardware and subscriptions. Success could reshape the consumer AI device market and Meta's revenue mix.",
+                    "sources": [
+                        "Engadget"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                },
+                {
+                    "topic": "Technology & AI",
+                    "region": "United States",
+                    "headline": "SpaceX Wins $4.16 Billion US Space Force Contract for Satellite Network to Track Aerial Targets",
+                    "summary": "SpaceX has secured a $4.16 billion contract from the US Space Force to build a satellite network (SB-AMTI) designed to track moving aerial targets from orbit. This follows a $2.29 billion contract awarded days earlier for a separate satellite communications architecture. The program aims to enhance military surveillance against advanced anti-access/area denial systems developed by rivals such as China and Russia. The satellite network will complement existing airborne early warning systems like the E-7 Wedgetail.",
+                    "why_it_matters": "This contract underscores SpaceX's expanding role in US national security space infrastructure, potentially influencing defense technology stocks and the broader space industry. It also highlights the strategic shift toward space-based surveillance to counter advanced threats, which could drive further investment in satellite and defense technologies.",
+                    "sources": [
+                        "Khabaronline"
+                    ],
+                    "priority_score": 7,
+                    "confidence": "High",
+                    "must_read": false
+                },
+                {
+                    "topic": "Technology & AI",
+                    "region": "Global",
+                    "headline": "Google's AI-First Overhaul Annoys Users So Much They Are Actually Switching Search Engines",
+                    "summary": "Users are reportedly switching away from Google Search due to frustration with its AI-first redesign, according to a report from Inc. Magazine.",
+                    "why_it_matters": "This signals potential user resistance to AI integration in core products, which could impact Google's search dominance and ad revenue if the trend continues.",
+                    "sources": [
+                        "Inc. Magazine"
+                    ],
+                    "priority_score": 6,
+                    "confidence": "Low",
+                    "must_read": false
+                }
+            ]
+        },
+        "regional_radar": [
+            {
+                "region": "Turkey",
+                "sentence": "AKP sources suggest early presidential elections in November; pension increase and social subsidies planned beforehand. Erdogan to decide. (Lenta.ru)"
+            },
+            {
+                "region": "Southeast Asia",
+                "sentence": "Ho Chi Minh City connects startups with Silicon Valley innovation platform Plug and Play; city enters top 100 global startup ecosystem ranking. (VnExpress)"
+            },
+            {
+                "region": "Europe",
+                "sentence": "EU expands sanctions on Hamas Political Bureau members and Israeli settlers for West Bank human rights violations. (Euronews)"
+            },
+            {
+                "region": "Japan",
+                "sentence": "Typhoon No. 6 approaching Kyushu and Amami around June 2-3, may then impact western to eastern Japan; risk to transport, agriculture, insurance. (MRT Miyazaki Broadcasting via Yahoo News Japan)"
+            },
+            {
+                "region": "India",
+                "sentence": "MCA allows up to 10% of CSR budgets for Social Stock Exchange instruments; new channel for impact investing. (The Economic Times)"
+            },
+            {
+                "region": "United Kingdom",
+                "sentence": "BMA ballots GPs on 'Plan B' potentially introducing subscription-based GP fees in England; could signal shift in UK primary care funding model. (Daily Express)"
+            },
+            {
+                "region": "Europe",
+                "sentence": "Costco opening 139,900 sq ft mega-store in Norwich, its first in East Anglia; signals continued UK retail expansion. (The Sun)"
+            }
+        ],
+        "tone_framing_differences": [
+            "Geopolitical escalation dominates – NATO, Middle East, Asia-Pacific flashpoints converge.",
+            "India stands out with cautious resilience and record FDI, but risks from crude and monsoon persist.",
+            "Defense sector thesis strengthened across multiple regions (US, Europe, Asia).",
+            "Energy markets remain sensitive to Iran negotiations and Strait of Hormuz risks.",
+            "Tech sector: AI wearables push by Meta, regulatory cloud sovereignty debate in Europe, SpaceX defense contracts."
+        ],
+        "tech_tendency": [
+            "AI wearables: Meta's aggressive push into AI pendant and smart glasses.",
+            "Cloud sovereignty: EU debate on BSI C3A framework could reshape European cloud market.",
+            "Space defense: SpaceX wins $4.16B Space Force contract, expanding role in national security space.",
+            "User resistance to AI integration: Google Search users switching due to AI-first redesign."
+        ],
+        "polymarket_watch": [
+            "NATO Article 5 deliberation after Romanian drone strike.",
+            "US-Iran war-ending MOU decision pending.",
+            "India monsoon season and wholesale inflation pass-through.",
+            "Japan typhoon impact on infrastructure and economy.",
+            "EU Cloud and AI Development Act (CADA) upcoming."
+        ],
+        "watch_next": [
+            "NATO Article 5 deliberation after Romanian drone strike – potential escalation of collective defense commitments.",
+            "US-Iran war-ending MOU decision – Trump's Situation Room meeting ended without conclusion; next steps could shift oil risk premium.",
+            "India's monsoon season and wholesale inflation pass-through – key for RBI policy and rural demand."
+        ],
+        "why_this_matters_today": "Multiple geopolitical flashpoints are converging simultaneously: a Russian drone strike on NATO member Romania, Israel crossing the Litani River into Lebanon, stalled US-Iran negotiations, and a US demand for Asian allies to boost defense spending. These events collectively increase risk premiums across energy, defense, and safe-haven assets. India's cautious resilience offers a relative safe harbor in EM, but domestic risks from crude dependence and monsoon remain. The defense sector thesis is reinforced globally, while tech investors should watch the EU cloud sovereignty debate and Meta's AI wearable push. The next 48 hours are critical for NATO's response and US-Iran diplomatic trajectory.",
+        "sources": [
+            {
+                "label": "France 24",
+                "url": "https://www.france24.com/en/romania-says-russian-drone-targeting-ukraine-crashes-in-apartment-killing-two"
+            },
+            {
+                "label": "NDTV",
+                "url": "https://www.ndtv.com/world-news/netanyahu-worried-trump-may-strike-a-bad-interim-deal-with-iran-report-11567145"
+            },
+            {
+                "label": "RFI",
+                "url": "https://www.rfi.fr/uk/%D0%BC%D1%96%D0%B6%D0%BD%D0%B0%D1%80%D0%BE%D0%B4%D0%BD%D1%96-%D0%BD%D0%BE%D0%B2%D0%B8%D0%BD%D0%B8/20260530-%D0%B3%D0%BB%D0%B0%D0%B2%D0%B0-%D0%BF%D0%B5%D0%BD%D1%82%D0%B0%D0%B3%D0%BE%D0%BD%D1%83-%D0%B7%D0%B0%D0%BA%D0%BB%D0%B8%D0%BA%D0%B0%D0%B2-%D1%81%D0%BE%D1%8E%D0%B7%D0%BD%D0%B8%D0%BA%D1%96%D0%B2-%D0%B2-%D0%B0%D0%B7%D1%96%D1%97-%D0%B3%D0%BE%D1%82%D1%83%D0%B2%D0%B0%D1%82%D0%B8%D1%81%D1%8F-%D0%B4%D0%BE-%D0%BF%D1%80%D0%BE%D1%82%D0%B8%D1%81%D1%82%D0%BE%D1%8F%D0%BD%D0%BD%D1%8F-%D0%B7-%D0%BA%D0%B8%D1%82%D0%B0%D1%94%D0%BC"
+            },
+            {
+                "label": "The Times of India",
+                "url": "https://timesofindia.indiatimes.com/business/india-business/india-shows-cautious-resilience-despite-middle-east-conflict-dea/articleshow/131406483.cms"
+            },
+            {
+                "label": "France 24 (Litani)",
+                "url": "https://www.france24.com/en/israel-crosses-the-litani-river-in-lebanon-what-it-means-and-why-it-matters"
+            },
+            {
+                "label": "heise online",
+                "url": "https://www.heise.de/news/Kritik-an-BSI-Rahmen-Scheinsouveraenitaet-fuer-die-europaeische-Cloud-11312411.html"
+            },
+            {
+                "label": "Engadget",
+                "url": "https://www.engadget.com/2184224/meta-developing-ai-pendant-more-smart-glass-models/"
+            },
+            {
+                "label": "India.com",
+                "url": "https://www.india.com/news/india/victory-resides-in-mind-army-chief-general-upendra-dwivedis-message-to-new-officers-at-nda-says-india-ready-for-operation-sindoor-2-0-national-defence-academy-kashmir-indian-army-8430769/"
+            },
+            {
+                "label": "Times of India (Norway)",
+                "url": "https://timesofindia.indiatimes.com/videos/international/russias-open-threat-to-nato-nation-norway-over-nuclear-pact-with-france-watch/videoshow/131407377.cms"
+            },
+            {
+                "label": "Khabaronline",
+                "url": "https://www.khabaronline.ir/news/2226158/%D9%85%D8%A7%D9%87%D9%88%D8%A7%D8%B1%D9%87-%D9%87%D8%A7%DB%8C%DB%8C-%DA%A9%D9%87-%D8%AD%D9%85%D9%84%D8%A7%D8%AA-%D9%87%D9%88%D8%A7%DB%8C%DB%8C-%D8%B1%D8%A7-%D8%A7%D8%B2-%D9%81%D8%B6%D8%A7-%D8%B4%D9%86%D8%A7%D8%B3%D8%A7%DB%8C%DB%8C-%D9%85%DB%8C-%DA%A9%D9%86%D9%86%D8%AF"
+            },
+            {
+                "label": "Euronews Germany",
+                "url": "http://de.euronews.com/my-europe/2026/05/30/oreschnik-drohnen-angriff-ukraine-selenskyj"
+            },
+            {
+                "label": "udn.com",
+                "url": "https://udn.com/news/story/124061/9535601"
+            },
+            {
+                "label": "RT Arabic",
+                "url": "https://arabic.rt.com/world/1794585-%D8%AA%D9%82%D8%B1%D9%8A%D8%B1-%D9%84%D9%80%D8%A5%D9%86-%D8%A8%D9%8A-%D8%B3%D9%8A-%D9%8A%D8%B1%D8%AC%D8%AD-%D8%A5%D8%B3%D8%A7%D8%B7-%D9%85%D9%82%D8%A7%D8%AA%D9%84%D8%A9-%D8%A3%D9%85%D8%B1%D9%8A%D9%83%D9%8A%D8%A9-%D9%81%D9%88%D9%82-%D8%A5%D9%8A%D8%B1%D8%A7%D9%86-%D8%A8%D8%B5%D8%A7%D8%B1%D9%88%D8%AE-%D8%B5%D9%8A%D9%86%D9%8A-%D9%88%D8%A8%D9%83%D9%8A%D9%86-%D8%AA%D9%86%D9%81%D9%8A/"
+            },
+            {
+                "label": "Fast Company",
+                "url": "https://www.fastcompany.com/91550905/housing-market-home-prices-zillow-downgrades-price-forecast-across-400-markets-see-the-data?partner=rss"
+            },
+            {
+                "label": "NDTV Profit",
+                "url": "https://www.ndtvprofit.com/business/indigo-signals-more-fare-hikes-as-demand-remains-strong-11568200"
+            },
+            {
+                "label": "The Economic Times (SSE)",
+                "url": "https://economictimes.indiatimes.com/markets/stocks/news/nse-social-stock-exchange-gets-csr-boost-as-mca-clears-corporate-funding-route-check-details/articleshow/131407114.cms"
+            },
+            {
+                "label": "Business Standard",
+                "url": "https://www.business-standard.com/companies/news/airbnb-leases-46-000-sq-ft-office-space-for-gcc-in-dlf-cyber-city-126053000827_1.html"
+            },
+            {
+                "label": "Yomiuri Shimbun",
+                "url": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE4yMWJPaGFjZldsckNtQ2NLbElHUFE3S2tpQ2o4WU54Vk1tczV6VnptSkhFWGZ0VXB0SE84WE91eXRJRzAzOEc3S0VGRDhzWE9OVVZVbkhxNGQ3a0xOSU54YVhQbW5MZw?oc=5"
+            },
+            {
+                "label": "Inc. Magazine",
+                "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxPZW1fN2RPQUNBc1VHVTRuTnlyRjBNX2MxQjdNQUxKWkpNVXZjR24wdk1sVHdfMUFjWU5Pd3I2S01zYktlNWtfeUZTczNaUm9WbUdzR0N3dHV3YUZ0d3RvaVRSdzl0d0hnN2pkMXNzRlZmLTN3bFBjRS1tMUtrS1UzSzQxZ2hFc283eVllTzJ0TzF1VHNORmFyX0YtWTBMLVFQLUw4QmdObnlTWTctMjVFaWRNSjZaWi1md21FVlZYaWtzYUVzVFFxeFZlcw?oc=5"
+            },
+            {
+                "label": "Lenta.ru",
+                "url": "https://lenta.ru/news/2026/05/30/v-pravyaschey-partii-turtsii-nazvali-vozmozhnuyu-datu-dosrochnyh-vyborov-prezidenta/"
+            },
+            {
+                "label": "VnExpress",
+                "url": "https://vnexpress.net/tp-hcm-ket-noi-startup-voi-nen-tang-doi-moi-sang-tao-my-5079464.html"
+            },
+            {
+                "label": "Euronews (Hamas)",
+                "url": "http://tr.euronews.com/my-europe/2026/05/30/ab-hamas-ve-islami-cihad-yaptirimlarini-hamas-siyasi-buro-uyelerini-kapsayacak-sekilde-gen"
+            },
+            {
+                "label": "MRT Miyazaki Broadcasting via Yahoo News Japan",
+                "url": "https://news.yahoo.co.jp/articles/886981e6006777e301d66765229492aa88c020d0"
+            },
+            {
+                "label": "Daily Express",
+                "url": "https://www.express.co.uk/life-style/health/2211446/plan-b-ballot-gp-appointments"
+            },
+            {
+                "label": "The Sun (Costco)",
+                "url": "https://www.thesun.co.uk/money/39255590/costco-opens-mega-store-uk-city-food-court/"
+            }
+        ]
+    }
+}

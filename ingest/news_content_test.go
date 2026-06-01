@@ -1,4 +1,4 @@
-package data
+package ingest
 
 import (
 	"context"
@@ -17,7 +17,7 @@ func TestExtractNewsContentSuccessMarkdownAndWordCount(t *testing.T) {
 			t.Error("User-Agent header was empty")
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, `<!doctype html>
+		if _, err := fmt.Fprint(w, `<!doctype html>
 <html>
 <head>
 	<title>Fallback Article Title</title>
@@ -30,7 +30,9 @@ func TestExtractNewsContentSuccessMarkdownAndWordCount(t *testing.T) {
 		<p><strong>Markets</strong> moved after the policy update.</p>
 	</article>
 </body>
-</html>`)
+</html>`); err != nil {
+			t.Fatalf("write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -104,7 +106,7 @@ func TestEnrichNewsArticleBucketsDedupesDuplicateLinks(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount.Add(1)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, `<!doctype html>
+		if _, err := fmt.Fprint(w, `<!doctype html>
 <html>
 <head><title>Shared Article</title></head>
 <body>
@@ -113,7 +115,9 @@ func TestEnrichNewsArticleBucketsDedupesDuplicateLinks(t *testing.T) {
 		<p>This shared article should be fetched only once by the extraction layer.</p>
 	</article>
 </body>
-</html>`)
+</html>`); err != nil {
+			t.Fatalf("write response: %v", err)
+		}
 	}))
 	defer server.Close()
 

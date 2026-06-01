@@ -1,4 +1,4 @@
-package data
+package ingest
 
 import (
 	"strings"
@@ -60,27 +60,27 @@ func TestParseYahooChartResponseErrors(t *testing.T) {
 		{
 			name:        "Yahoo API error with description",
 			body:        `{"chart":{"result":null,"error":{"code":"Not Found","description":"No data found"}}}`,
-			wantErrPart: "Yahoo chart API error Not Found: No data found",
+			wantErrPart: "yahoo chart API error Not Found: No data found",
 		},
 		{
 			name:        "Yahoo API error without description",
 			body:        `{"chart":{"result":null,"error":{"code":"Unauthorized","description":""}}}`,
-			wantErrPart: "Yahoo chart API error Unauthorized",
+			wantErrPart: "yahoo chart API error Unauthorized",
 		},
 		{
 			name:        "empty result",
 			body:        `{"chart":{"result":[],"error":null}}`,
-			wantErrPart: "Yahoo chart response has no result",
+			wantErrPart: "yahoo chart response has no result",
 		},
 		{
 			name:        "missing regular market price",
 			body:        `{"chart":{"result":[{"meta":{"regularMarketTime":1717000000}}],"error":null}}`,
-			wantErrPart: "Yahoo chart response has no regular market price",
+			wantErrPart: "yahoo chart response has no regular market price",
 		},
 		{
 			name:        "missing regular market time",
 			body:        `{"chart":{"result":[{"meta":{"regularMarketPrice":5250.75}}],"error":null}}`,
-			wantErrPart: "Yahoo chart response has no regular market time",
+			wantErrPart: "yahoo chart response has no regular market time",
 		},
 	}
 
@@ -127,13 +127,13 @@ func TestExtractYahooValueErrors(t *testing.T) {
 			name:              "nil price",
 			regularMarketTime: &marketTime,
 			regularPrice:      nil,
-			wantErrPart:       "Yahoo chart response has no regular market price",
+			wantErrPart:       "yahoo chart response has no regular market price",
 		},
 		{
 			name:              "nil time",
 			regularMarketTime: nil,
 			regularPrice:      &price,
-			wantErrPart:       "Yahoo chart response has no regular market time",
+			wantErrPart:       "yahoo chart response has no regular market time",
 		},
 	}
 

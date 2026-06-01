@@ -9,18 +9,27 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
-	"gpnews/data"
+	"gpnews/briefing"
+	"gpnews/ingest"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
 )
 
 type config struct {
-	LogLevel       string `env:"LOG_LEVEL" envDefault:"info"` // debug, info, warn, error
-	NewsDataAPIKey string `env:"NEWS_DATA_API_KEY"`
-	EnableFetching bool   `env:"ENABLE_FETCHING" envDefault:"true"`
-	PersistData    bool   `env:"PERSIST_DATA" envDefault:"true"`
+	LogLevel               string   `env:"LOG_LEVEL" envDefault:"info"` // debug, info, warn, error
+	NewsDataAPIKey         string   `env:"NEWS_DATA_API_KEY"`
+	EnableFetching         bool     `env:"ENABLE_FETCHING" envDefault:"true"`
+	PersistData            bool     `env:"PERSIST_DATA" envDefault:"true"`
+	Model                  string   `env:"MODEL"`
+	BaseURL                string   `env:"BASE_URL" envDefault:"https://api.openai.com/v1"`
+	LLMAPIKey              string   `env:"LLM_API_KEY"`
+	LLMMaxCompletionTokens int64    `env:"LLM_MAX_COMPLETION_TOKENS" envDefault:"0"`
+	LLMTemperature         float64  `env:"LLM_TEMPERATURE" envDefault:"0"`
+	LLMThinkingLevel       string   `env:"LLM_THINKING_LEVEL" envDefault:"medium"`
+	LLMProviderIgnore      []string `env:"LLM_PROVIDER_IGNORE" envSeparator:","`
 }
 
 func main() {
@@ -40,7 +49,8 @@ func main() {
 	slog.Info("Starting GP-News")
 
 	ctx := context.Background()
-	marketValues, categoryBuckets, regionBuckets, err := data.RetrieveData(ctx, data.Config{
+
+	marketValues, categoryBuckets, regionBuckets, err := ingest.RetrieveData(ctx, ingest.Config{
 		NewsDataAPIKey: cfg.NewsDataAPIKey,
 		EnableFetching: cfg.EnableFetching,
 		PersistData:    cfg.PersistData,
@@ -48,15 +58,36 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	_, _, _ = marketValues, categoryBuckets, regionBuckets
 
-	// [TODO] Process and dedupe article JSONs
+	llm, err := briefing.NewLLMGenerator(briefing.Config{
+		BaseURL:             cfg.BaseURL,
+		APIKey:              cfg.LLMAPIKey,
+		Model:               cfg.Model,
+		MaxCompletionTokens: cfg.LLMMaxCompletionTokens,
+		Temperature:         cfg.LLMTemperature,
+		ThinkingLevel:       cfg.LLMThinkingLevel,
+		ProviderIgnore:      cfg.LLMProviderIgnore,
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to create LLM generator: %w", err))
+	}
 
-	// [TODO] Fetch article URLs
+	now := time.Now()
+	briefingDate := now.Format(time.DateOnly)
+	session := briefingSession(now)
+	articles := buildArticleInputs(categoryBuckets, regionBuckets)
+	marketSnapshot := buildMarketInputs(marketValues)
 
-	// [TODO] Extract article content
-
-	// [TODO] Invoke LLM to generate summaries
+	briefingEmail, err := llm.GenerateBriefing(ctx, briefing.BriefingAgentInput{
+		BriefingDate:   briefingDate,
+		Session:        session,
+		MarketSnapshot: marketSnapshot,
+		Articles:       articles,
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to generate briefing: %w", err))
+	}
+	slog.Info("Generated briefing", "output", briefingEmail)
 
 	// [TODO] Render email template
 
@@ -84,6 +115,83 @@ func validateConfig(cfg config) error {
 		return fmt.Errorf("invalid config: NEWS_DATA_API_KEY is required when ENABLE_FETCHING=true")
 	}
 	return nil
+}
+
+// Returns a list of articles with valid links, de-duplicated by link.
+func buildArticleInputs(categoryBuckets []ingest.NewsArticleBucket, regionBuckets []ingest.NewsArticleBucket) []briefing.ArticleInput {
+	articles := make([]briefing.ArticleInput, 0)
+	seenLinks := make(map[string]bool)
+
+	addBucket := func(bucket ingest.NewsArticleBucket) {
+		for i, article := range bucket.Articles {
+			linkKey := strings.TrimSpace(article.Link)
+			if linkKey != "" {
+				if seenLinks[linkKey] {
+					continue
+				}
+				seenLinks[linkKey] = true
+			}
+
+			articles = append(articles, briefing.ArticleInput{
+				ID:                 fmt.Sprintf("%s_%d", bucket.ID, i),
+				BucketID:           bucket.ID,
+				BucketName:         bucket.Name,
+				Title:              article.Title,
+				Link:               article.Link,
+				ExtractedTitle:     optionalStringValue(article.ExtractedTitle),
+				ExtractedContent:   optionalStringValue(article.ExtractedContent),
+				ExtractedWordCount: optionalIntValue(article.ExtractedWordCount),
+				ExtractionError:    article.ExtractionError,
+			})
+		}
+	}
+
+	for _, bucket := range categoryBuckets {
+		addBucket(bucket)
+	}
+	for _, bucket := range regionBuckets {
+		addBucket(bucket)
+	}
+
+	return articles
+}
+
+func buildMarketInputs(marketValues []ingest.MarketValue) []briefing.MarketInput {
+	marketInputs := make([]briefing.MarketInput, 0, len(marketValues))
+	for _, value := range marketValues {
+		marketInputs = append(marketInputs, briefing.MarketInput{
+			ID:        value.ID,
+			Name:      value.Name,
+			Category:  value.Category,
+			Symbol:    value.Symbol,
+			Level:     fmt.Sprintf("%g", value.Value),
+			Timestamp: value.Timestamp.Format(time.RFC3339),
+			Source:    value.Source,
+		})
+	}
+	return marketInputs
+}
+
+// Returns Morning or Night based on the time.
+func briefingSession(now time.Time) string {
+	if now.Hour() < 12 {
+		return "Morning"
+	}
+	return "Night"
+}
+
+func optionalStringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func optionalIntValue(value *int) int {
+	if value == nil {
+		return 0
+	}
+	return *value
 }
 
 func configureLogger(cfg config) {

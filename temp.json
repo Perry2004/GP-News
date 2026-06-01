@@ -1,0 +1,595 @@
+{
+  "time": "2026-05-31T19:21:22.059362-07:00",
+  "level": "INFO",
+  "msg": "Generated briefing",
+  "output": {
+    "subject": "Geopolitics dominate the overnight session as risks escalate across multiple fronts",
+    "criticality_score": 7.5,
+    "priority_level": "Watch",
+    "high_priority_tag": true,
+    "main_driver": "Escalating geopolitical risk across Middle East, Europe, and South Asia",
+    "todays_signal": "Defensive tilt amid multiple risk events",
+    "read_this_first": [
+      "Iran deal uncertainty remains the top global risk. Netanyahu fears a 'bad interim deal,' Iran’s leadership dismisses Trump’s diplomacy as 'third betrayal,' and the White House convened a war cabinet but made no final decision. Oil holds Brent at $91.12/bbl and WTI at $87.36/bbl — expect volatility on any headline.",
+      "Russia-NATO tensions flare on two fronts: a Russian drone targeting Ukraine killed two in Romania (NATO soil), and Russia directly threatened Norway over a nuclear pact with France. Both raise the geopolitical risk premium on European assets, with natural gas prices and defense stocks as the likely beneficiaries.",
+      "India’s macro narrative shows 'cautious resilience' per the official DEA review: strong FDI ($94.5B), but wholesale inflation at 8.3% vs retail at 3.48% signals policy caution. The Nifty range (23,250–23,800) and Operation Sindoor readiness keep defense and energy sectors in focus."
+    ],
+    "market_snapshot": {
+      "equity_indices": [
+        {
+          "asset": "S&P 500",
+          "level": "7580.06",
+          "daily_change": "",
+          "timestamp": "2026-05-297T14:03:37-07:00",
+          "driver": "Elevated but stable; geopolitics as key risk",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "NASDAQ Composite",
+          "level": "26972.62",
+          "daily_change": "",
+          "timestamp": "2026-05-29T14:15:59-07:00",
+          "driver": "Tech resilience tested by Google AI backlash meta wearable news",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Dow Jones Industrial Average",
+          "level": "51032.46",
+          "daily_change": "",
+          "timestamp": "2026-05-29T14:03:44-07:00",
+          "driver": "Defensive positioning amid geopolitical risk",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Euro Stoxx 50",
+          "level": "6050.54",
+          "daily_change": "",
+          "timestamp": "2026-05-29T09:00:00-07:00",
+          "driver": "Russia-NATO tensions weigh; defense stocks support",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "DAX",
+          "level": "25104.7",
+          "daily_change": "",
+          "timestamp": "2026-05-29T09:00:00-07:00",
+          "driver": "Risk-off bias from eastern Europe spillover",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "CAC 40",
+          "level": "8183.34",
+          "daily_change": "",
+          "timestamp": "2026-05-29T09:05:02-07:00",
+          "driver": "French nuclear pact with Norway adds defense theme",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "FTSE 100",
+          "level": "10409.28",
+          "daily_change": "",
+          "timestamp": "2026-05-29T08:45:59-07:00",
+          "driver": "Strong UK retail sentiment from Costco expansion",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Nikkei 225",
+          "level": "66329.5",
+          "daily_change": "",
+          "timestamp": "2026-05-28T23:45:03-07:00",
+          "driver": "Gasoline subsidy debate creates uncertainty",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Shanghai Composite",
+          "level": "4068.569",
+          "daily_change": "",
+          "timestamp": "2026-05-29T00:00:29-07:00",
+          "driver": "Allegation of Chinese missile use in Iran could weigh",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "CSI 300",
+          "level": "4892.121",
+          "daily_change": "",
+          "timestamp": "2026-05-29T00:00:29-07:00",
+          "driver": "Li-Ning tech push supports selective consumer positioning",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Hang Seng Index",
+          "level": "25182.39",
+          "daily_change": "",
+          "timestamp": "2026-05-29T01:08:50-07:00",
+          "driver": "Defensive trading on China-US tension over Iran missile claim",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "KOSPI",
+          "level": "8476.15",
+          "daily_change": "",
+          "timestamp": "2026-05-29T02:05:40-07:00",
+          "driver": "Defense and tech stocks eyeing US spending call",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "ASX 200",
+          "level": "8731.7",
+          "daily_change": "",
+          "timestamp": "2026-05-29T00:01:14-07:00",
+          "driver": "Asia-Pacific defense theme catalyzed by Pentagon's 3.5% GDP push",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Russell 2000",
+          "level": "2919.3384",
+          "daily_change": "",
+          "timestamp": "2026-05-29T13:30:08-07:00",
+          "driver": "Small caps weigh on housing weakness (Zillow forecast)",
+          "source": "yahoo_chart_api"
+        }
+      ],
+      "fx": [
+        {
+          "asset": "DXY",
+          "level": "98.942",
+          "daily_change": "",
+          "timestamp": "2026-05-29T13:59:59-07:00",
+          "driver": "Safe-haven demand from global geopolitical risk",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "EUR/USD",
+          "level": "1.1659",
+          "daily_change": "",
+          "timestamp": "2026-05-29T14:29:50-07:00",
+          "driver": "Russia-NATO spillover pressure on euro",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "GBP/USD",
+          "level": "1.3457",
+          "daily_change": "",
+          "timestamp": "2026-05-29T14:29:50-07:00",
+          "driver": "UK GP ballot adds political noise; Housing market stable",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "USD/JPY",
+          "level": "159.255",
+          "daily_change": "",
+          "timestamp": "2026-05-29T21:21:11-07:00",
+          "driver": "Japan subsidy debate could weaken yen if fiscal expansion continues",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "EUR/JPY",
+          "level": "185.709",
+          "daily_change": "",
+          "timestamp": "2026-05-29T14:28:50-07:00",
+          "driver": "Risk-off cross driven by European tensions",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "AUD/USD",
+          "level": "0.7186",
+          "daily_change": "",
+          "timestamp": "2026-05-29T21:50:52-07:00",
+          "driver": "China-linked geopolitics weighs on Aussie",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "USD/CNY",
+          "level": "6.7657",
+          "daily_change": "",
+          "timestamp": "2026-05-29T14:32:29-07:00",
+          "driver": "Allegation of Chinese missile in Iran adds diplomatic risk",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "USD/CNH",
+          "level": "6.7628",
+          "daily_change": "",
+          "timestamp": "2026-05-29T13:59:44-07:00",
+          "driver": "Offshore yuan steady; Pentagon's Asia call adds pressure",
+          "source": "yahoo_chart_api"
+        }
+      ],
+      "rates_bonds": [
+        {
+          "asset": "U.S. 10Y Treasury yield",
+          "level": "4.453",
+          "daily_change": "",
+          "timestamp": "2026-05-29T11:59:55-07:00",
+          "driver": "Geopolitical risk bids Treasuries; yield cap from growth fears",
+          "source": "yahoo_chart_api"
+        }
+      ],
+      "commodities_crypto_risk": [
+        {
+          "asset": "WTI crude",
+          "level": "87.36",
+          "daily_change": "",
+          "timestamp": "2026-05-29T13:59:57-07:00",
+          "driver": "Iran deal uncertainty and Israel tensions support bid",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Brent crude",
+          "level": "91.12",
+          "daily_change": "",
+          "timestamp": "2026-05-29T13:59:56-07:00",
+          "driver": "Russia-NATO escalation and Middle East volatility add risk premium",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Copper futures",
+          "level": "6.389",
+          "daily_change": "",
+          "timestamp": "2026-05-29T13:59:55-07:00",
+          "driver": "China industrial demand overhang with tariff risk",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Gold futures",
+          "level": "4593",
+          "daily_change": "",
+          "timestamp": "2026-05-29T13:59:58-07:00",
+          "driver": "Geopolitical risk and safe-haven flows support multi-front bid",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Bitcoin",
+          "level": "73756.5",
+          "daily_change": "",
+          "timestamp": "2026-05-30T15:24:29-07:00",
+          "driver": "Tech and geopolitical uncertainty; gold competition for safe-haven flows",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "Ethereum",
+          "level": "2020.95",
+          "daily_change": "",
+          "timestamp": "2026-05-30T15:24:29-07:00",
+          "driver": "Crypto risk-off; correlated with equity risk appetite",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "VIX",
+          "level": "15.32",
+          "daily_change": "",
+          "timestamp": "2026-05-29T13:15:01-07:00",
+          "driver": "Elevated but below panic; geopolitical tail risk priced in",
+          "source": "yahoo_chart_api"
+        },
+        {
+          "asset": "SKEW",
+          "level": "144.18",
+          "daily_change": "",
+          "timestamp": "2026-05-29T14:00:47-07:00",
+          "driver": "Tail-risk hedging elevated amid multiple geopolitical flashpoints",
+          "source": "yahoo_chart_api"
+        }
+      ]
+    },
+    "macro_data_watch": [
+      "Wholesale vs retail inflation divergence in India (8.3% vs 3.48%) signals potential pass-through risks",
+      "Zillow's 12-month US home price forecast lowered to -0.1%, confirming housing market softness",
+      "Japan gasoline subsidy at ¥400B/month sparks political debate; could flip inflation outlook if reduced"
+    ],
+    "policy_signal_watch": [
+      "Pentagon calls for 3.5% GDP defense spending by Asian allies",
+      "EU expands sanctions to Hamas Political Bureau members",
+      "India allows up to 10% of CSR budget via Social Stock Exchange"
+    ],
+    "top_news_by_topic": {
+      "markets_macro": [
+        {
+          "topic": "Markets & Macro",
+          "region": "India",
+          "headline": "India shows 'cautious resilience' despite Middle East conflict: DEA",
+          "summary": "India's Department of Economic Affairs expects cautious resilience in the economy amid strong domestic fundamentals. Key risks: Middle East conflict, rising crude prices, and potential weak monsoon. Record FDI of $94.5B in FY26 supports the positive macro view, but the divergence between low retail inflation (3.48%) and high wholesale inflation (8.3%) suggests policy caution from the RBI.",
+          "why_it_matters": "Official government macro assessment is critical for India growth-inflation dynamics and RBI policy stance.",
+          "sources": [
+            "Times of India"
+          ],
+          "priority_score": 8,
+          "confidence": "High",
+          "must_read": true
+        },
+        {
+          "topic": "Markets & Macro",
+          "region": "India",
+          "headline": "IndiGo Sees Room to Raise Airfares Further as Costs Rise",
+          "summary": "IndiGo CEO Rahul Bhatia expects to continue raising fares due to resilient demand despite higher fuel costs and geopolitical disruptions. Fuel charges and mid-teens passenger unit revenue growth in Q1 FY27 highlight strong pricing power.",
+          "why_it_matters": "Signals strong demand in Indian aviation but also cost pass-through pressures affecting travel inflation and airline margins.",
+          "sources": [
+            "NDTV Profit"
+          ],
+          "priority_score": 8,
+          "confidence": "High",
+          "must_read": true
+        },
+        {
+          "topic": "Markets & Macro",
+          "region": "India",
+          "headline": "F&O Talk: Nifty may stay range-bound; Sudeep Shah sees opportunities in banks, IT, picks 7 stocks",
+          "summary": "Analyst Sudeep Shah of SBI Securities details Nifty resistance at 23,750-23,800 and support at 23,300-23,250. Recommends selective stocks in private banks, PSU banks, financials, and midcap IT. FIIs remain cautious with some short covering.",
+          "why_it_matters": "Actionable technical and derivatives analysis for short-term trading in a range-bound market.",
+          "sources": [
+            "Economic Times"
+          ],
+          "priority_score": 8,
+          "confidence": "High",
+          "must_read": false
+        },
+        {
+          "topic": "Markets & Macro",
+          "region": "United States",
+          "headline": "Zillow downgrades its home price forecast across 400-plus housing markets",
+          "summary": "Zillow's 12-month U.S. home price forecast projects a 0.1% decline from April 2026 to April 2027, a downgrade from previous forecasts. Affordability may improve gradually as income growth outpaces home price gains.",
+          "why_it_matters": "Major housing data bellwether signals softening market, affecting homebuilders, REITs, and mortgage lenders.",
+          "sources": [
+            "Fast Company"
+          ],
+          "priority_score": 7,
+          "confidence": "High",
+          "must_read": false
+        },
+        {
+          "topic": "Markets & Macro",
+          "region": "India",
+          "headline": "Airbnb Leases 46,000 Sq Ft Office Space for GCC in DLF Cyber City",
+          "summary": "Airbnb signed a five-year lease in Gurugram for 46,437 sq ft at ₹132.5/sq ft with a 5% escalation clause. Signals continued expansion of global capability centres in India and strong demand for Grade A office space.",
+          "why_it_matters": "Reinforces strong institutional leasing demand from tech companies supporting REITs and property developers in Delhi-NCR.",
+          "sources": [
+            "Business Standard"
+          ],
+          "priority_score": 7,
+          "confidence": "High",
+          "must_read": false
+        }
+      ],
+      "politics_policy": [
+        {
+          "topic": "Politics & Policy",
+          "region": "United Kingdom",
+          "headline": "UK patients fuming over 'Plan B' GP ballot that could result in costly appointments",
+          "summary": "UK GPs will be balloted on a 'Plan B' moving to a means-tested, subscription-based service similar to NHS dentists. The BMA cites unsustainable workloads while the government opposes the move.",
+          "why_it_matters": "Potential structural change to UK primary care, affecting private healthcare providers and insurers if adopted.",
+          "sources": [
+            "Express.co.uk"
+          ],
+          "priority_score": 7,
+          "confidence": "Medium",
+          "must_read": false
+        }
+      ],
+      "war_geopolitical_risk": [
+        {
+          "topic": "War & Geopolitical Risk",
+          "region": "Middle East",
+          "headline": "Netanyahu Worried Trump May Strike A 'Bad Interim Deal' With Iran",
+          "summary": "Netanyahu privately fears a suboptimal interim US-Iran deal that fails to address Iran's enriched uranium stockpile or missile program. US appears to move toward broader diplomacy, while Israel favors military pressure. Can impact oil supply routes and regional stability.",
+          "why_it_matters": "Key US-Israel-Iran diplomatic divergence with direct oil market implications — any easing of sanctions could increase Iranian oil exports, while escalation could spike prices.",
+          "sources": [
+            "NDTV"
+          ],
+          "priority_score": 7,
+          "confidence": "High",
+          "must_read": true
+        },
+        {
+          "topic": "War & Geopolitical Risk",
+          "region": "Europe",
+          "headline": "Russia's Open Threat To NATO Nation Norway Over Nuclear Pact With France",
+          "summary": "Russia issued a stark warning to Norway over deeping nuclear deterrence cooperation with France. Norway is a major European energy supplier, and the threat adds geopolitical risk premium to European gas markets.",
+          "why_it_matters": "Direct Russia-NATO escalation risk involving a key European energy supplier, potentially driving higher natural gas prices and safe-haven flows.",
+          "sources": [
+            "Times of India"
+          ],
+          "priority_score": 7,
+          "confidence": "High",
+          "must_read": true
+        },
+        {
+          "topic": "War & Geopolitical Risk",
+          "region": "Europe",
+          "headline": "Romania says Russian drone targeting Ukraine crashes in apartment, killing two",
+          "summary": "A Russian drone intended for Ukrainian targets crashed into a residential building in Galati, Romania, killing two people. First lethal spillover of the Ukraine war on NATO soil, escalating Russia-NATO tensions.",
+          "why_it_matters": "Significant escalation risk for the Russia-Ukraine war extending to NATO territory, likely driving defensive market rotations into defense stocks and safe havens.",
+          "sources": [
+            "France 24"
+          ],
+          "priority_score": 7,
+          "confidence": "High",
+          "must_read": false
+        },
+        {
+          "topic": "War & Geopolitical Risk",
+          "region": "India-Pakistan",
+          "headline": "Army Chief: Operation Sindoor Still Active, Forces Ready for Possible Next Phase",
+          "summary": "Indian Army Chief confirms Operation Sindoor against terror infrastructure in Pakistan remains active. Forces preparing for 'Operation Sindoor 2.0' if needed. Enhanced jointness among services and new warfare domains highlighted.",
+          "why_it_matters": "Ongoing cross-border military preparedness increases South Asia geopolitical risk, affecting defense, energy, and transportation sectors.",
+          "sources": [
+            "Firstpost"
+          ],
+          "priority_score": 7,
+          "confidence": "High",
+          "must_read": false
+        },
+        {
+          "topic": "War & Geopolitical Risk",
+          "region": "Ukraine, Russia",
+          "headline": "After Attack with 600 Drones, Zelenskyy Warns: Russia Plans New Major Offensive",
+          "summary": "President Zelenskyy warns Russia is planning a new large-scale attack following a drone assault of approximately 600 drones. Potential escalation of the conflict affecting global energy, grain, and defense markets.",
+          "why_it_matters": "Escalation signal adding to geopolitical risk premium across European assets and global commodity supply chains.",
+          "sources": [
+            "Euronews (German edition)"
+          ],
+          "priority_score": 7,
+          "confidence": "Low",
+          "must_read": false
+        }
+      ],
+      "technology_ai": [
+        {
+          "topic": "Technology & AI",
+          "region": "Global",
+          "headline": "Google's AI-First Overhaul Annoys Users So Much They Are Actually Switching Search Engines",
+          "summary": "User frustration with Google's AI-driven search overhaul has driven some users to switch to alternatives. Potential ad revenue implications for Alphabet.",
+          "why_it_matters": "User churn from Google Search could affect Alphabet's core revenue stream and shift competitive dynamics in search.",
+          "sources": [
+            "inc.com via Google News"
+          ],
+          "priority_score": 7,
+          "confidence": "Medium",
+          "must_read": false
+        },
+        {
+          "topic": "Technology & AI",
+          "region": "United States",
+          "headline": "Meta Is Reportedly Working On An AI Pendant And More Smart Glasses",
+          "summary": "Meta developing an AI pendant and up to four smart glasses models by end-2026. Aims to sell 10 million wearables in H2 2026 with a new 'Wearables for Work' subscription service. Reality Labs lost $19B in 2025.",
+          "why_it_matters": "Strategic shift to monetize AI wearables and reduce Reality Labs losses, potentially creating new revenue streams but execution risk remains.",
+          "sources": [
+            "Engadget"
+          ],
+          "priority_score": 7,
+          "confidence": "Medium",
+          "must_read": false
+        },
+        {
+          "topic": "Technology & AI",
+          "region": "Middle East",
+          "headline": "Satellites That Detect Airstrikes from Space",
+          "summary": "SpaceX secured a $4.16 billion contract from the U.S. Space Force to build a satellite network for tracking moving aerial targets from orbit. Follows a separate $2.29 billion contract for satellite communications.",
+          "why_it_matters": "Deepens SpaceX's role in military space infrastructure; positive for IPO prospects and defense space trend, reshaping surveillance dynamics.",
+          "sources": [
+            "Khabaronline"
+          ],
+          "priority_score": 7,
+          "confidence": "Medium",
+          "must_read": false
+        },
+        {
+          "topic": "Technology & AI",
+          "region": "Vietnam",
+          "headline": "HCMC connects startups with US innovation platform Plug and Play",
+          "summary": "Ho Chi Minh City promotes connections between local startups and Silicon Valley's Plug and Play to expand access to capital, technology, and international markets. The city rose 12 places to 98th globally in the StartupBlink 2026 ranking.",
+          "why_it_matters": "Signals deepening integration of Vietnam's startup ecosystem into global innovation networks, potentially attracting foreign investment in AI and deep tech.",
+          "sources": [
+            "VnExpress"
+          ],
+          "priority_score": 7,
+          "confidence": "Medium",
+          "must_read": false
+        }
+      ]
+    },
+    "regional_radar": [
+      {
+        "region": "India",
+        "sentence": "DEA sees cautious resilience with record FDI but wholesale inflation divergence keeps RBI cautious; Operation Sindoor active; IndiGo's pricing power signals demand strength"
+      },
+      {
+        "region": "Middle East",
+        "sentence": "Iran deal uncertainty grips markets — Netanyahu fears bad interim deal, Iran's leadership rejects diplomacy, and the White House war cabinet remains undecided; Egypt-Israel military tension over Sinai airbase"
+      },
+      {
+        "region": "Europe",
+        "sentence": "Russia-NATO escalation: drone strike kills two in Romania (NATO soil), threat to Norway over French nuclear pact, and EU sanctions expanded on Hamas; all add risk premium"
+      },
+      {
+        "region": "Asia-Pacific",
+        "sentence": "Pentagon chief urges allies to raise defense spending to 3.5% of GDP; Vietnam-Singapore high-tech corridor agreement; Japan gasoline subsidy debate threatens ¥400B/month fiscal cost"
+      },
+      {
+        "region": "United States",
+        "sentence": "Zillow forecast downgrade signals housing softness; Google AI search backlash risks ad revenue; SpaceX secures major defense contracts; Pentagon pushes Asia defense build-up"
+      },
+      {
+        "region": "China",
+        "sentence": "Denied allegation of providing missile system used to down US fighter jet in Iran; Li-Ning explores embodied intelligence in sportswear; diplomatic pressure mounts over suspected military exports"
+      },
+      {
+        "region": "United Kingdom",
+        "sentence": "GP ballot could introduce subscription-based primary care, disrupting NHS model; Costco expands to East Anglia with 139,900 sq ft store"
+      }
+    ],
+    "tone_framing_differences": [],
+    "tech_tendency": [
+      "Meta's AI wearables push with $19B Reality Labs loss signals high-stakes bet on hardware monetization",
+      "Google AI search overhaul driving user churn to alternatives threatens core ad revenue model"
+    ],
+    "polymarket_watch": [],
+    "watch_next": [
+      "Outcome of US-Iran negotiations: An MOU or collapse could move oil $5-10/bbl; monitor White House statements",
+      "Russia-NATO escalation: The Romania drone strike and Norway nuclear pact threat could trigger NATO collective defense discussions, impacting European gas prices and defense stocks",
+      "India macro data flow: Wholesale inflation pass-through, monsoon progress, and RBI policy signals will determine Nifty trajectory and rupee direction"
+    ],
+    "why_this_matters_today": "Multiple geopolitical flashpoints — Iran deal uncertainty, Russia-NATO spillover (Romania drone kill, Norway nuclear threat), and India-Pakistan military readiness — are converging, creating a high-risk environment for oil, defense, and safe-haven assets. The market is in a 'watch and react' mode with elevated tail-risk hedging.",
+    "sources": [
+      {
+        "label": "Times of India",
+        "url": "https://timesofindia.indiatimes.com/business/india-business/india-shows-cautious-resilience-despite-middle-east-conflict-dea/articleshow/131406483.cms"
+      },
+      {
+        "label": "NDTV Profit",
+        "url": "https://www.ndtvprofit.com/business/indigo-signals-more-fare-hikes-as-demand-remains-strong-11568200"
+      },
+      {
+        "label": "Economic Times",
+        "url": "https://economictimes.indiatimes.com/markets/stocks/news/fo-talk-nifty-may-stay-range-bound-sudeep-shah-sees-opportunities-in-banks-it-picks-7-stocks/articleshow/131406954.cms"
+      },
+      {
+        "label": "Fast Company",
+        "url": "https://www.fastcompany.com/91550905/housing-market-home-prices-zillow-downgrades-price-forecast-across-400-markets-see-the-data?partner=rss"
+      },
+      {
+        "label": "Business Standard",
+        "url": "https://www.business-standard.com/companies/news/airbnb-leases-46-000-sq-ft-office-space-for-gcc-in-dlf-cyber-city-126053000827_1.html"
+      },
+      {
+        "label": "NDTV",
+        "url": "https://www.ndtv.com/world-news/netanyahu-worried-trump-may-strike-a-bad-interim-deal-with-iran-report-11567145"
+      },
+      {
+        "label": "Times of India",
+        "url": "https://timesofindia.indiatimes.com/videos/international/russias-open-threat-to-nato-nation-norway-over-nuclear-pact-with-france-watch/videoshow/131407377.cms"
+      },
+      {
+        "label": "France 24",
+        "url": "https://www.france24.com/en/romania-says-russian-drone-targeting-ukraine-crashes-in-apartment-killing-two"
+      },
+      {
+        "label": "Firstpost",
+        "url": "https://www.firstpost.com/india/operation-sindoor-still-on-forces-prepared-for-next-phase-says-army-chief-14016979.html"
+      },
+      {
+        "label": "inc.com via Google News",
+        "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxPZW1fN2RPQUNBc1VHVTRuTnlyRjBNX2MxQjdNQUxKWkpNVXZjR24wdk1sVHdfMUFjWU5Pd3I2S01zYktlNWtfeUZTczNaUm9WbUdzR0N3dHV3YUZ0d3RvaVRSdzl0d0hnN2pkMXNzRlZmLTN3bFBjRS1tMUtrS1UzSzQxZ2hFc283eVllTzJ0TzF1VHNORmFyX0YtWTBMLVFQLUw4QmdObnlTZk1KUlprandwQTVLcHZRbXFaX1lGbGppdFZlcw?oc=5"
+      },
+      {
+        "label": "Engadget",
+        "url": "https://www.engadget.com/2184224/meta-developing-ai-pendant-more-smart-glass-models/"
+      },
+      {
+        "label": "Khabaronline",
+        "url": "https://www.khabaronline.ir/news/2226158/%D9%85%D8%A7%D9%87%D9%88%D8%A7%D8%B1%D9%87-%D9%87%D8%A7%DB%8C%DB%8C-%DA%A9%D9%87-%D8%AD%D9%85%D9%84%D8%A7%D8%AA-%D9%87%D9%88%D8%A7%DB%8C%DB%8C-%D8%B1%D8%A7-%D8%A7%D8%B2-%D9%81%D8%B6%D8%A7-%D8%B4%D9%86%D8%A7%D8%B3%D8%A7%DB%8C%DB%8C-%D9%85%DB%8C-%DA%A9%D9%86%D9%86%D8%AF"
+      },
+      {
+        "label": "VnExpress",
+        "url": "https://vnexpress.net/tp-hcm-ket-noi-startup-voi-nen-tang-doi-moi-sang-tao-my-5079464.html"
+      },
+      {
+        "label": "Express.co.uk",
+        "url": "https://www.express.co.uk/life-style/health/2211446/plan-b-ballot-gp-appointments"
+      },
+      {
+        "label": "Euronews (German edition)",
+        "url": "http://de.euronews.com/my-europe/2026/05/30/oreschnik-drohnen-angriff-ukraine-selenskyj"
+      }
+    ]
+  }
+}

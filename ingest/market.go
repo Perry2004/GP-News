@@ -1,4 +1,4 @@
-package data
+package ingest
 
 import (
 	"context"
@@ -186,7 +186,9 @@ func fetchYahooMarketValue(ctx context.Context, client *http.Client, baseURL str
 	if err != nil {
 		return MarketValue{}, fmt.Errorf("request failed for %s: %w", instrument.ID, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // Limit to 1MB
 	if err != nil {
@@ -214,13 +216,13 @@ func parseYahooChartResponse(instrument Instrument, body []byte) (MarketValue, e
 	if response.Chart.Error != nil {
 		// Yahoo returned API error
 		if response.Chart.Error.Description != "" {
-			return MarketValue{}, fmt.Errorf("Yahoo chart API error %s: %s", response.Chart.Error.Code, response.Chart.Error.Description)
+			return MarketValue{}, fmt.Errorf("yahoo chart API error %s: %s", response.Chart.Error.Code, response.Chart.Error.Description)
 		}
-		return MarketValue{}, fmt.Errorf("Yahoo chart API error %s", response.Chart.Error.Code)
+		return MarketValue{}, fmt.Errorf("yahoo chart API error %s", response.Chart.Error.Code)
 	}
 
 	if len(response.Chart.Result) == 0 {
-		return MarketValue{}, fmt.Errorf("Yahoo chart response has no result")
+		return MarketValue{}, fmt.Errorf("yahoo chart response has no result")
 	}
 
 	result := response.Chart.Result[0]
@@ -242,10 +244,10 @@ func parseYahooChartResponse(instrument Instrument, body []byte) (MarketValue, e
 
 func extractYahooValue(regularMarketPrice *float64, regularMarketTime *int64) (float64, time.Time, error) {
 	if regularMarketPrice == nil {
-		return 0, time.Time{}, fmt.Errorf("Yahoo chart response has no regular market price")
+		return 0, time.Time{}, fmt.Errorf("yahoo chart response has no regular market price")
 	}
 	if regularMarketTime == nil {
-		return 0, time.Time{}, fmt.Errorf("Yahoo chart response has no regular market time")
+		return 0, time.Time{}, fmt.Errorf("yahoo chart response has no regular market time")
 	}
 	return *regularMarketPrice, time.Unix(*regularMarketTime, 0), nil
 }

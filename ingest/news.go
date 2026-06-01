@@ -1,4 +1,4 @@
-package data
+package ingest
 
 import (
 	"context"
@@ -388,7 +388,9 @@ func fetchNewsDataArticles(ctx context.Context, apiKey string, request newsDataR
 	if err != nil {
 		return nil, fmt.Errorf("request failed for %s: %w", request.Endpoint, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	if err != nil {
