@@ -160,16 +160,40 @@ func buildMarketInputs(marketValues []ingest.MarketValue) []briefing.MarketInput
 	marketInputs := make([]briefing.MarketInput, 0, len(marketValues))
 	for _, value := range marketValues {
 		marketInputs = append(marketInputs, briefing.MarketInput{
-			ID:        value.ID,
-			Name:      value.Name,
-			Category:  value.Category,
-			Symbol:    value.Symbol,
-			Level:     fmt.Sprintf("%g", value.Value),
-			Timestamp: value.Timestamp.Format(time.RFC3339),
-			Source:    value.Source,
+			ID:          value.ID,
+			Name:        value.Name,
+			Category:    value.Category,
+			Symbol:      value.Symbol,
+			Level:       fmt.Sprintf("%g", value.Value),
+			DailyChange: formatMarketDailyChange(value),
+			Timestamp:   value.Timestamp.Format(time.RFC3339),
+			History:     buildMarketHistoryInputs(value.History),
+			Source:      value.Source,
 		})
 	}
 	return marketInputs
+}
+
+func formatMarketDailyChange(value ingest.MarketValue) string {
+	if !value.DailyChangeValid {
+		return ""
+	}
+	return fmt.Sprintf("%+.2f (%+.2f%%)", value.DailyChange, value.DailyChangePercent)
+}
+
+func buildMarketHistoryInputs(history []ingest.MarketHistoryPoint) []briefing.MarketHistoryPoint {
+	if len(history) == 0 {
+		return nil
+	}
+
+	points := make([]briefing.MarketHistoryPoint, 0, len(history))
+	for _, point := range history {
+		points = append(points, briefing.MarketHistoryPoint{
+			Timestamp: point.Timestamp.Format(time.RFC3339),
+			Close:     fmt.Sprintf("%g", point.Close),
+		})
+	}
+	return points
 }
 
 // Returns Morning or Night based on the time.

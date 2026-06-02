@@ -6,6 +6,9 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
+
+	"gpnews/ingest"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -39,6 +42,46 @@ func TestConfigParsesProviderIgnoreList(t *testing.T) {
 
 	if len(cfg.LLMProviderIgnore) != 2 || cfg.LLMProviderIgnore[0] != "akashml" || cfg.LLMProviderIgnore[1] != "morph" {
 		t.Fatalf("LLMProviderIgnore = %#v, want [akashml morph]", cfg.LLMProviderIgnore)
+	}
+}
+
+func TestBuildMarketInputsIncludesDailyChangeAndHistory(t *testing.T) {
+	marketTime := time.Unix(1717000000, 0)
+	historyTime := time.Unix(1716739200, 0)
+	marketInputs := buildMarketInputs([]ingest.MarketValue{
+		{
+			ID:                 "sp500",
+			Name:               "S&P 500",
+			Category:           "equity_index",
+			Symbol:             "^GSPC",
+			Value:              5250.75,
+			DailyChange:        25.5,
+			DailyChangePercent: 0.48801492847508446,
+			DailyChangeValid:   true,
+			Timestamp:          marketTime,
+			History: []ingest.MarketHistoryPoint{
+				{Timestamp: historyTime, Close: 5225.25},
+				{Timestamp: marketTime, Close: 5250.75},
+			},
+			Source: "yahoo_chart_api",
+		},
+	})
+
+	if len(marketInputs) != 1 {
+		t.Fatalf("market input count = %d, want 1", len(marketInputs))
+	}
+	input := marketInputs[0]
+	if input.DailyChange != "+25.50 (+0.49%)" {
+		t.Fatalf("DailyChange = %q, want %q", input.DailyChange, "+25.50 (+0.49%)")
+	}
+	if len(input.History) != 2 {
+		t.Fatalf("History length = %d, want 2", len(input.History))
+	}
+	if input.History[0].Timestamp != historyTime.Format(time.RFC3339) {
+		t.Fatalf("History[0].Timestamp = %q, want %q", input.History[0].Timestamp, historyTime.Format(time.RFC3339))
+	}
+	if input.History[0].Close != "5225.25" {
+		t.Fatalf("History[0].Close = %q, want 5225.25", input.History[0].Close)
 	}
 }
 

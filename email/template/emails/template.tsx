@@ -21,6 +21,7 @@ type MarketItem = {
   asset: string;
   level: string;
   dailyChange?: string;
+  daily_change?: string;
   timestamp: string;
   driver: string;
   source: string;
@@ -98,7 +99,7 @@ const sampleBriefing: BriefingEmail = {
       {
         asset: "S&P 500",
         level: "7,580.06",
-        dailyChange: "+0.42%",
+        dailyChange: "+31.84 (+0.42%)",
         timestamp: "16:03 ET",
         driver:
           "Large-cap tech strength offset defensive positioning before inflation data.",
@@ -107,7 +108,7 @@ const sampleBriefing: BriefingEmail = {
       {
         asset: "Nikkei 225",
         level: "66,329.50",
-        dailyChange: "-0.18%",
+        dailyChange: "-119.39 (-0.18%)",
         timestamp: "15:45 JST",
         driver: "Yen volatility kept exporter sentiment mixed.",
         source: "Yahoo Finance",
@@ -117,7 +118,7 @@ const sampleBriefing: BriefingEmail = {
       {
         asset: "USD/JPY",
         level: "159.26",
-        dailyChange: "+0.27%",
+        dailyChange: "+0.43 (+0.27%)",
         timestamp: "08:45 JST",
         driver:
           "Yen weakened as U.S.-Japan yield spreads stayed wide and FX policy coordination remained in focus.",
@@ -126,7 +127,7 @@ const sampleBriefing: BriefingEmail = {
       {
         asset: "DXY",
         level: "98.94",
-        dailyChange: "+0.11%",
+        dailyChange: "+0.11 (+0.11%)",
         timestamp: "16:00 ET",
         driver: "Dollar demand held firm ahead of U.S. macro data.",
         source: "Yahoo Finance",
@@ -136,7 +137,7 @@ const sampleBriefing: BriefingEmail = {
       {
         asset: "U.S. 10Y Treasury yield",
         level: "4.453%",
-        dailyChange: "+3 bps",
+        dailyChange: "+0.03 (+0.68%)",
         timestamp: "14:59 ET",
         driver:
           "Rates stayed elevated as inflation risk remained the main macro constraint.",
@@ -147,7 +148,7 @@ const sampleBriefing: BriefingEmail = {
       {
         asset: "Brent crude",
         level: "91.12",
-        dailyChange: "+0.68%",
+        dailyChange: "+0.61 (+0.68%)",
         timestamp: "16:59 ET",
         driver:
           "Ceasefire uncertainty kept geopolitical risk premium in energy markets.",
@@ -156,7 +157,7 @@ const sampleBriefing: BriefingEmail = {
       {
         asset: "VIX",
         level: "15.32",
-        dailyChange: "+0.09",
+        dailyChange: "+0.09 (+0.59%)",
         timestamp: "16:15 ET",
         driver:
           "Options demand remained modest despite policy and geopolitical risk.",
@@ -482,20 +483,30 @@ function MarketGroup({ title, items }: { title: string; items: MarketItem[] }) {
   return (
     <Section style={styles.marketGroup}>
       <Heading style={styles.groupTitle}>{title}</Heading>
-      {items.map((item) => (
-        <Section key={`${title}-${item.asset}`} style={styles.marketCard}>
-          <Text style={styles.marketLine}>
-            <span style={styles.strong}>{item.asset}:</span> {item.level}
-            {item.dailyChange ? ` (${item.dailyChange})` : ""}, {item.timestamp}
-          </Text>
-          <Text style={styles.detailLine}>
-            <span style={styles.detailLabel}>Driver:</span> {item.driver}
-          </Text>
-          <Text style={styles.detailLine}>
-            <span style={styles.detailLabel}>Source:</span> {item.source}
-          </Text>
-        </Section>
-      ))}
+      {items.map((item) => {
+        const dailyChange = item.dailyChange ?? item.daily_change;
+
+        return (
+          <Section key={`${title}-${item.asset}`} style={styles.marketCard}>
+            <Text style={styles.marketLine}>
+              <span style={styles.strong}>{item.asset}:</span> {item.level}
+              {dailyChange ? (
+                <>
+                  {" "}
+                  <span style={styles.marketChange}>{dailyChange}</span>
+                </>
+              ) : null}
+              , {item.timestamp}
+            </Text>
+            <Text style={styles.detailLine}>
+              <span style={styles.detailLabel}>Driver:</span> {item.driver}
+            </Text>
+            <Text style={styles.detailLine}>
+              <span style={styles.detailLabel}>Source:</span> {item.source}
+            </Text>
+          </Section>
+        );
+      })}
     </Section>
   );
 }
@@ -787,6 +798,10 @@ const styles = {
     color: "#1b1f23",
     fontSize: "14px",
     lineHeight: "20px",
+  },
+  marketChange: {
+    color: "#425466",
+    fontWeight: "700",
   },
   detailLine: {
     margin: "3px 0 0",

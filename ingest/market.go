@@ -64,13 +64,22 @@ func yahooFinanceInstruments() []Instrument {
 }
 
 type MarketValue struct {
-	ID        string
-	Name      string
-	Category  string
-	Symbol    string
-	Value     float64
+	ID                 string
+	Name               string
+	Category           string
+	Symbol             string
+	Value              float64
+	DailyChange        float64
+	DailyChangePercent float64
+	DailyChangeValid   bool
+	Timestamp          time.Time
+	History            []MarketHistoryPoint
+	Source             string
+}
+
+type MarketHistoryPoint struct {
 	Timestamp time.Time
-	Source    string
+	Close     float64
 }
 
 type FetchFailure struct {
@@ -82,7 +91,8 @@ type FetchFailure struct {
 type yahooChartResponse struct {
 	Chart struct {
 		Result []struct {
-			Meta struct {
+			Timestamp []int64 `json:"timestamp"`
+			Meta      struct {
 				Symbol             string   `json:"symbol"`
 				Currency           *string  `json:"currency"`
 				ExchangeName       string   `json:"exchangeName"`
@@ -94,6 +104,11 @@ type yahooChartResponse struct {
 				DataGranularity    string   `json:"dataGranularity"`
 				Range              string   `json:"range"`
 			} `json:"meta"`
+			Indicators struct {
+				Quote []struct {
+					Close []*float64 `json:"close"`
+				} `json:"quote"`
+			} `json:"indicators"`
 		} `json:"result"`
 		Error *struct {
 			Code        string `json:"code"`
@@ -168,7 +183,7 @@ func fetchYahooMarketValues(ctx context.Context, instruments []Instrument, clien
 }
 
 func fetchYahooMarketValue(ctx context.Context, client *http.Client, baseURL string, instrument Instrument) (MarketValue, error) {
-	requestURL := strings.TrimRight(baseURL, "/") + "/" + url.PathEscape(instrument.Symbol) + "?interval=1d"
+	requestURL := strings.TrimRight(baseURL, "/") + "/" + url.PathEscape(instrument.Symbol) + "?range=5d&interval=1d"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		return MarketValue{}, fmt.Errorf("build request: %w", err)
@@ -230,15 +245,21 @@ func parseYahooChartResponse(instrument Instrument, body []byte) (MarketValue, e
 	if err != nil {
 		return MarketValue{}, err
 	}
+	history := extractYahooHistory(result.Timestamp, result.Indicators.Quote)
+	dailyChange, dailyChangePercent, dailyChangeValid := calculateDailyChange(value, result.Indicators.Quote)
 
 	return MarketValue{
-		ID:        instrument.ID,
-		Name:      instrument.Name,
-		Category:  instrument.Category,
-		Symbol:    instrument.Symbol,
-		Value:     value,
-		Timestamp: timestamp,
-		Source:    dataSource,
+		ID:                 instrument.ID,
+		Name:               instrument.Name,
+		Category:           instrument.Category,
+		Symbol:             instrument.Symbol,
+		Value:              value,
+		DailyChange:        dailyChange,
+		DailyChangePercent: dailyChangePercent,
+		DailyChangeValid:   dailyChangeValid,
+		Timestamp:          timestamp,
+		History:            history,
+		Source:             dataSource,
 	}, nil
 }
 
@@ -250,4 +271,59 @@ func extractYahooValue(regularMarketPrice *float64, regularMarketTime *int64) (f
 		return 0, time.Time{}, fmt.Errorf("yahoo chart response has no regular market time")
 	}
 	return *regularMarketPrice, time.Unix(*regularMarketTime, 0), nil
+}
+
+func extractYahooHistory(timestamps []int64, quotes []struct {
+	Close []*float64 `json:"close"`
+}) []MarketHistoryPoint {
+	if len(timestamps) == 0 || len(quotes) == 0 {
+		return nil
+	}
+
+	closes := quotes[0].Close
+	limit := len(timestamps)
+	if len(closes) < limit {
+		limit = len(closes)
+	}
+
+	history := make([]MarketHistoryPoint, 0, limit)
+	for i := 0; i < limit; i++ {
+		if closes[i] == nil {
+			continue
+		}
+		history = append(history, MarketHistoryPoint{
+			Timestamp: time.Unix(timestamps[i], 0),
+			Close:     *closes[i],
+		})
+	}
+	return history
+}
+
+func calculateDailyChange(currentValue float64, quotes []struct {
+	Close []*float64 `json:"close"`
+}) (float64, float64, bool) {
+	previousClose, ok := previousNonNullCloseBeforeLatestPoint(quotes)
+	if !ok || previousClose == 0 {
+		return 0, 0, false
+	}
+
+	dailyChange := currentValue - previousClose
+	dailyChangePercent := dailyChange / previousClose * 100
+	return dailyChange, dailyChangePercent, true
+}
+
+func previousNonNullCloseBeforeLatestPoint(quotes []struct {
+	Close []*float64 `json:"close"`
+}) (float64, bool) {
+	if len(quotes) == 0 || len(quotes[0].Close) < 2 {
+		return 0, false
+	}
+
+	closes := quotes[0].Close
+	for i := len(closes) - 2; i >= 0; i-- {
+		if closes[i] != nil {
+			return *closes[i], true
+		}
+	}
+	return 0, false
 }

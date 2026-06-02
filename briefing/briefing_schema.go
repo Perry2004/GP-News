@@ -3,14 +3,20 @@ package briefing
 import "github.com/invopop/jsonschema"
 
 type MarketInput struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Category    string `json:"category"`
-	Symbol      string `json:"symbol"`
-	Level       string `json:"level"`
-	DailyChange string `json:"daily_change"`
-	Timestamp   string `json:"timestamp"`
-	Source      string `json:"source"`
+	ID          string               `json:"id"`
+	Name        string               `json:"name"`
+	Category    string               `json:"category"`
+	Symbol      string               `json:"symbol"`
+	Level       string               `json:"level"`
+	DailyChange string               `json:"daily_change"`
+	Timestamp   string               `json:"timestamp"`
+	History     []MarketHistoryPoint `json:"history"`
+	Source      string               `json:"source"`
+}
+
+type MarketHistoryPoint struct {
+	Timestamp string `json:"timestamp"`
+	Close     string `json:"close"`
 }
 
 type BriefingAgentInput struct {
@@ -53,7 +59,7 @@ type BriefingInput struct {
 }
 
 type BriefingEmail struct {
-	Subject                string          `json:"subject"`
+	Subject                string          `json:"subject" jsonschema:"minLength=12,maxLength=120" jsonschema_description:"Generated email subject line for this specific briefing. Must be concise and mention the main market driver or criticality, not a generic desk name."`
 	CriticalityScore       float64         `json:"criticality_score" jsonschema:"minimum=0,maximum=10"`
 	PriorityLevel          string          `json:"priority_level" jsonschema:"enum=Low,enum=Watch,enum=Important,enum=Critical"`
 	HighPriorityTag        bool            `json:"high_priority_tag"`
@@ -82,7 +88,7 @@ type MarketSnapshot struct {
 type MarketSnapshotItem struct {
 	Asset       string `json:"asset"`
 	Level       string `json:"level"`
-	DailyChange string `json:"daily_change"`
+	DailyChange string `json:"daily_change" jsonschema:"pattern=^$|^[+-][0-9]+([.][0-9]{1\\,2})? [(][+-][0-9]+([.][0-9]{1\\,2})?%[)]$" jsonschema_description:"Empty only when no daily comparison was supplied. Otherwise copy the supplied daily_change exactly in '+absolute (+percent%)' format, for example '+19.90 (+0.26%)' or '-120.40 (-1.35%)'. Do not output percent-only values."`
 	Timestamp   string `json:"timestamp"`
 	Driver      string `json:"driver"`
 	Source      string `json:"source"`

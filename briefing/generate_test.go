@@ -860,14 +860,38 @@ func TestBriefingSystemPromptDefinesFullNewsCardLimit(t *testing.T) {
 
 	prompt := briefingSystemPrompt()
 	for _, want := range []string{
+		"generate subject as a specific email subject line",
 		"5 to 15 total full news cards across top_news_by_topic",
 		"len(markets_macro) + len(politics_policy) + len(war_geopolitical_risk) + len(technology_ai)",
 		"never exceed 15 total full news cards",
+		"copy that daily_change format exactly as '+absolute (+percent%)'",
+		"do not convert it to percent-only text",
 		"every top_news_by_topic card must include sources as label/url objects",
 		"every regional_radar item must include sources as label/url objects",
 	} {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("briefing prompt missing %q:\n%s", want, prompt)
+		}
+	}
+}
+
+func TestBriefingEmailSchemaConstrainsSubjectAndDailyChangeFormat(t *testing.T) {
+	t.Parallel()
+
+	data, err := json.Marshal(briefingEmailSchema())
+	if err != nil {
+		t.Fatalf("marshal briefing schema: %v", err)
+	}
+	schema := string(data)
+	for _, want := range []string{
+		"Generated email subject line for this specific briefing",
+		`"minLength":12`,
+		`"maxLength":120`,
+		"Do not output percent-only values",
+		`"pattern":"^$|^[+-][0-9]+([.][0-9]{1,2})? [(][+-][0-9]+([.][0-9]{1,2})?%[)]$"`,
+	} {
+		if !strings.Contains(schema, want) {
+			t.Fatalf("briefing email schema missing %q:\n%s", want, schema)
 		}
 	}
 }
