@@ -67,10 +67,12 @@ Graph key:
 
 2. Process each valid news entry
    - Each valid article is sent to the model in its own structured JSON call.
-   - These calls run concurrently.
+   - These calls run concurrently with a bounded first-pass LLM concurrency limit.
+   - Each LLM chat completion is bounded by a per-request timeout, so one provider call cannot block the entire briefing indefinitely.
    - The model returns one `ProcessedNews` object per article, including summary, relevance analysis, market impact, confidence, and `keep_for_briefing`.
    - Structured calls use `response_format: json_schema` with `strict=true` and also set `structured_outputs=true`; schema adherence depends on the configured model/backend actually enforcing structured outputs.
    - All OpenRouter chat requests set `provider.require_parameters=true`.
+   - If a first-pass news item still fails after the structured-call retry behavior, Go logs and excludes only that article; the rest of the briefing continues.
    - OpenRouter requests may ignore unreliable providers with comma-separated slugs in `LLM_PROVIDER_IGNORE` (for example, `akashml,morph` for `deepseek/deepseek-v4-flash` structured outputs).
    - OpenRouter requests include `X-OpenRouter-Experimental-Metadata: enabled`; decode failures log the selected provider and router metadata when returned.
    - Leave `LLM_MAX_COMPLETION_TOKENS=0` unless a hard cap is needed. DeepSeek can spend hundreds of reasoning tokens before emitting small JSON, so low caps can return empty content.
@@ -108,10 +110,13 @@ Graph key:
    - Selected reviewed news is ordered by descending `priority_score`.
    - Full article content is not passed to final generation by default; only compact review notes, corrections, and additional context are carried forward.
    - The model generates the final email `subject`; the schema requires it to be briefing-specific and not a generic desk name.
-   - Market snapshot `daily_change` must either be empty or use the exact `+absolute (+percent%)` format copied from supplied market data, such as `+19.90 (+0.26%)`; percent-only values are rejected by schema.
+   - The model generates `market_drivers` keyed by supplied market IDs, but does not generate the final `market_snapshot`.
+   - Go assembles the public `market_snapshot` deterministically from supplied market data, preserving asset, level, `daily_change`, timestamp, source, and input order within each category.
+   - Missing market drivers use a neutral fallback; drivers for unknown market IDs are ignored with a warning.
+   - Final composition has its own longer bounded chat timeout because the reviewed-news handoff is much larger than individual first-pass article calls.
    - The final result must contain 5 to 15 total full news cards across all `top_news_by_topic` arrays combined. If the model returns a count outside that range, generation is retried once and then fails loudly.
    - Full news cards and regional radar items carry their own `sources` label/url objects; there is no separate top-level sources section.
-   - This phase also uses the strict JSON schema response format, with the `BriefingEmail` schema.
+   - This phase also uses the strict JSON schema response format, with an internal `BriefingEmailDraft` schema.
    - It returns the current `BriefingEmail` JSON shape used by the email template. The email template renders market `daily_change` inline in the existing Market Snapshot section.
    - After this package returns `BriefingEmail`, `main.go` renders the pre-exported React Email HTML template and writes `cache/briefing_email.html`.
    - The old post-generation verification step is no longer part of the runtime path.

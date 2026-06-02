@@ -78,6 +78,31 @@ type BriefingEmail struct {
 	WhyThisMattersToday    string          `json:"why_this_matters_today"`
 }
 
+type BriefingEmailDraft struct {
+	Subject                string          `json:"subject" jsonschema:"minLength=12,maxLength=120" jsonschema_description:"Generated email subject line for this specific briefing. Must be concise and mention the main market driver or criticality, not a generic desk name."`
+	CriticalityScore       float64         `json:"criticality_score" jsonschema:"minimum=0,maximum=10"`
+	PriorityLevel          string          `json:"priority_level" jsonschema:"enum=Low,enum=Watch,enum=Important,enum=Critical"`
+	HighPriorityTag        bool            `json:"high_priority_tag"`
+	MainDriver             string          `json:"main_driver"`
+	TodaysSignal           string          `json:"todays_signal"`
+	ReadThisFirst          []string        `json:"read_this_first"`
+	MarketDrivers          []MarketDriver  `json:"market_drivers" jsonschema_description:"One concise driver for each supplied market_snapshot item, keyed by the supplied market id. Do not include market_snapshot in this output."`
+	MacroDataWatch         []string        `json:"macro_data_watch"`
+	PolicySignalWatch      []string        `json:"policy_signal_watch"`
+	TopNewsByTopic         TopNewsByTopic  `json:"top_news_by_topic"`
+	RegionalRadar          []RegionalRadar `json:"regional_radar"`
+	ToneFramingDifferences []string        `json:"tone_framing_differences"`
+	TechTendency           []string        `json:"tech_tendency"`
+	PolymarketWatch        []string        `json:"polymarket_watch"`
+	WatchNext              []string        `json:"watch_next"`
+	WhyThisMattersToday    string          `json:"why_this_matters_today"`
+}
+
+type MarketDriver struct {
+	ID     string `json:"id" jsonschema_description:"Market id copied exactly from the supplied market_snapshot input."`
+	Driver string `json:"driver" jsonschema_description:"Concise English market driver for this market item."`
+}
+
 type MarketSnapshot struct {
 	EquityIndices         []MarketSnapshotItem `json:"equity_indices"`
 	FX                    []MarketSnapshotItem `json:"fx"`
@@ -126,6 +151,10 @@ type BriefingSource struct {
 
 func briefingEmailSchema() any {
 	return schemaFor[BriefingEmail]()
+}
+
+func briefingEmailDraftSchema() any {
+	return schemaFor[BriefingEmailDraft]()
 }
 
 func schemaFor[T any]() any {

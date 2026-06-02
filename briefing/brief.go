@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 )
 
 const (
-	finalNewsCardMin = 5
-	finalNewsCardMax = 15
+	finalNewsCardMin                   = 5
+	finalNewsCardMax                   = 15
+	finalBriefingChatCompletionTimeout = 6 * time.Minute
 )
 
 func (g *LLMGenerator) generateFinalBriefing(ctx context.Context, state *briefingAgentState) (BriefingEmail, error) {
@@ -52,16 +55,98 @@ func (g *LLMGenerator) generateFinalBriefing(ctx context.Context, state *briefin
 }
 
 func (g *LLMGenerator) generateFinalBriefingWithPrompt(ctx context.Context, input BriefingInput, systemPrompt string) (BriefingEmail, error) {
-	var output BriefingEmail
-	err := generateStructured(ctx, g, structuredRequest[BriefingEmail]{
+	var draft BriefingEmailDraft
+	err := generateStructured(ctx, g, structuredRequest[BriefingEmailDraft]{
 		Name:        "briefing_email",
-		Description: "Email-ready GP News briefing JSON.",
-		Schema:      briefingEmailSchema(),
+		Description: "Email-ready GP News briefing draft JSON with market drivers keyed by supplied market ids.",
+		Schema:      briefingEmailDraftSchema(),
 		System:      systemPrompt,
 		Input:       input,
-		Output:      &output,
+		Output:      &draft,
+		Timeout:     finalBriefingChatCompletionTimeout,
 	})
-	return output, err
+	if err != nil {
+		return BriefingEmail{}, err
+	}
+	return mergeBriefingDraft(input, draft), nil
+}
+
+func mergeBriefingDraft(input BriefingInput, draft BriefingEmailDraft) BriefingEmail {
+	return BriefingEmail{
+		Subject:                draft.Subject,
+		CriticalityScore:       draft.CriticalityScore,
+		PriorityLevel:          draft.PriorityLevel,
+		HighPriorityTag:        draft.HighPriorityTag,
+		MainDriver:             draft.MainDriver,
+		TodaysSignal:           draft.TodaysSignal,
+		ReadThisFirst:          draft.ReadThisFirst,
+		MarketSnapshot:         buildDeterministicMarketSnapshot(input.MarketSnapshot, draft.MarketDrivers),
+		MacroDataWatch:         draft.MacroDataWatch,
+		PolicySignalWatch:      draft.PolicySignalWatch,
+		TopNewsByTopic:         draft.TopNewsByTopic,
+		RegionalRadar:          draft.RegionalRadar,
+		ToneFramingDifferences: draft.ToneFramingDifferences,
+		TechTendency:           draft.TechTendency,
+		PolymarketWatch:        draft.PolymarketWatch,
+		WatchNext:              draft.WatchNext,
+		WhyThisMattersToday:    draft.WhyThisMattersToday,
+	}
+}
+
+func buildDeterministicMarketSnapshot(markets []MarketInput, drivers []MarketDriver) MarketSnapshot {
+	knownIDs := make(map[string]bool, len(markets))
+	for _, market := range markets {
+		knownIDs[market.ID] = true
+	}
+
+	driverByID := make(map[string]string, len(drivers))
+	for _, driver := range drivers {
+		id := strings.TrimSpace(driver.ID)
+		if id == "" {
+			continue
+		}
+		if !knownIDs[id] {
+			slog.Warn("Ignoring market driver for unknown market id", "market_id", id)
+			continue
+		}
+		driverText := strings.TrimSpace(driver.Driver)
+		if driverText == "" {
+			continue
+		}
+		driverByID[id] = driverText
+	}
+
+	var snapshot MarketSnapshot
+	for _, market := range markets {
+		item := MarketSnapshotItem{
+			Asset:       market.Name,
+			Level:       market.Level,
+			DailyChange: market.DailyChange,
+			Timestamp:   market.Timestamp,
+			Driver:      driverByID[market.ID],
+			Source:      market.Source,
+		}
+		if strings.TrimSpace(item.Driver) == "" {
+			item.Driver = "No specific driver provided."
+		}
+
+		switch market.Category {
+		case "equity_index":
+			snapshot.EquityIndices = append(snapshot.EquityIndices, item)
+		case "fx":
+			snapshot.FX = append(snapshot.FX, item)
+		case "rates":
+			snapshot.RatesBonds = append(snapshot.RatesBonds, item)
+		case "commodity", "crypto", "risk":
+			snapshot.CommoditiesCryptoRisk = append(snapshot.CommoditiesCryptoRisk, item)
+		default:
+			slog.Warn("Ignoring market input with unknown category",
+				"market_id", market.ID,
+				"category", market.Category,
+			)
+		}
+	}
+	return snapshot
 }
 
 func validateFinalNewsCardCount(briefing BriefingEmail) error {
@@ -91,10 +176,11 @@ Follow these rules:
 - any top_news_by_topic category may be empty when it has no strong reviewed news
 - 5 to 8 regional_radar items when enough processed news exists
 - 2 to 3 watch_next items
-- every market item must include asset, level, daily_change, timestamp, driver, and source
-- market items may include recent 5-day daily close history for comparison context
-- when supplied market data has daily_change, copy that daily_change format exactly as '+absolute (+percent%%)'; do not convert it to percent-only text
-- never claim a daily move unless daily_change is present in supplied market data
+- do not output market_snapshot; it is assembled deterministically after this draft
+- output market_drivers only, one concise driver for each supplied market_snapshot item, using each supplied market id exactly
+- use supplied market levels, daily_change, timestamps, and recent 5-day daily close history only as context for market_drivers
+- never invent or copy deterministic market fields into market_drivers; write only the id and driver text
+- never claim a daily move in a driver unless daily_change is present in supplied market data
 - source every major news card from supplied reviewed news only
 - every top_news_by_topic card must include sources as label/url objects from supplied reviewed news
 - every regional_radar item must include sources as label/url objects from supplied reviewed news

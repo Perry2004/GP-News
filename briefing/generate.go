@@ -85,17 +85,24 @@ func (g *LLMGenerator) GenerateBriefing(ctx context.Context, input BriefingAgent
 		"excluded_error_article_count", len(input.Articles)-len(validArticles),
 	)
 
-	state := newBriefingAgentState(input, validArticles)
-	slog.Info("Initial agent state created",
-		"briefing_date", input.BriefingDate,
-		"session", input.Session,
-		"valid_article_count", len(validArticles),
-	)
 	processed, err := g.processNewsConcurrently(ctx, input.BriefingDate, validArticles)
-	slog.Info("Processed news entries", "count", len(processed))
 	if err != nil {
 		return BriefingEmail{}, err
 	}
+	processedArticleIDs := processedNewsArticleIDSet(processed)
+	reviewArticles := filterArticlesByIDSet(validArticles, processedArticleIDs)
+	input.Articles = reviewArticles
+	slog.Info("Processed news entries",
+		"count", len(processed),
+		"skipped_processing_count", len(validArticles)-len(reviewArticles),
+	)
+
+	state := newBriefingAgentState(input, reviewArticles)
+	slog.Info("Initial agent state created",
+		"briefing_date", input.BriefingDate,
+		"session", input.Session,
+		"valid_article_count", len(reviewArticles),
+	)
 	for _, news := range processed {
 		state.applyInitialProcessedNews(news)
 	}
@@ -129,9 +136,14 @@ type structuredRequest[T any] struct {
 	System      string
 	Input       any
 	Output      *T
+	LogAttrs    []any
+	Timeout     time.Duration
 }
 
-const maxStructuredDecodeAttempts = 3
+const (
+	maxStructuredDecodeAttempts = 3
+	llmChatCompletionTimeout    = 3 * time.Minute
+)
 
 var errStructuredDecode = errors.New("structured LLM decode failure")
 
@@ -144,14 +156,14 @@ func generateStructured[T any](ctx context.Context, g *LLMGenerator, req structu
 	startedAt := time.Now()
 	payload, err := json.Marshal(req.Input)
 	if err != nil {
-		slog.Error("Failed to marshal LLM input",
+		slog.Error("Failed to marshal LLM input", structuredLogArgs(req,
 			"schema_name", req.Name,
 			"error", err,
-		)
+		)...)
 		return fmt.Errorf("marshal generation input: %w", err)
 	}
 
-	slog.Debug("Starting structured LLM call",
+	slog.Debug("Starting structured LLM call", structuredLogArgs(req,
 		"schema_name", req.Name,
 		"model", g.model,
 		"input_bytes", len(payload),
@@ -159,7 +171,7 @@ func generateStructured[T any](ctx context.Context, g *LLMGenerator, req structu
 		// "input_payload", string(payload),
 		"max_completion_tokens", g.maxCompletionTokens,
 		"temperature", g.temperature,
-	)
+	)...)
 
 	params := openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
@@ -192,57 +204,57 @@ func generateStructured[T any](ctx context.Context, g *LLMGenerator, req structu
 			return err
 		}
 		if attempt < maxStructuredDecodeAttempts {
-			slog.Warn("Retrying structured LLM call after decode failure",
+			slog.Warn("Retrying structured LLM call after decode failure", structuredLogArgs(req,
 				"schema_name", req.Name,
 				"model", g.model,
 				"attempt", attempt,
 				"max_attempts", maxStructuredDecodeAttempts,
 				"error", err,
-			)
+			)...)
 		}
 	}
 	return lastErr
 }
 
 func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req structuredRequest[T], params openai.ChatCompletionNewParams, payload []byte, startedAt time.Time, attempt int) error {
-	chat, err := g.createChatCompletion(ctx, params,
+	chat, err := g.createChatCompletionWithTimeout(ctx, structuredRequestTimeout(req), params,
 		option.WithJSONSet("structured_outputs", true),
 	)
 	if err != nil {
-		slog.Error("Structured LLM call failed",
+		slog.Error("Structured LLM call failed", structuredLogArgs(req,
 			"schema_name", req.Name,
 			"model", g.model,
 			"duration", time.Since(startedAt).String(),
 			"attempt", attempt,
 			"error", err,
-		)
+		)...)
 		return fmt.Errorf("create chat completion: %w", err)
 	}
 	if len(chat.Choices) == 0 {
-		slog.Error("Structured LLM call returned no choices",
+		slog.Error("Structured LLM call returned no choices", structuredLogArgs(req,
 			"schema_name", req.Name,
 			"model", g.model,
 			"duration", time.Since(startedAt).String(),
 			"attempt", attempt,
-		)
+		)...)
 		return errors.New("create chat completion: no choices returned")
 	}
 	provider, metadata := openRouterResponseDetails(chat.RawJSON())
 
 	message := chat.Choices[0].Message
 	if strings.TrimSpace(message.Refusal) != "" {
-		slog.Warn("Structured LLM call returned refusal",
+		slog.Warn("Structured LLM call returned refusal", structuredLogArgs(req,
 			"schema_name", req.Name,
 			"model", g.model,
 			"duration", time.Since(startedAt).String(),
 			"attempt", attempt,
 			"refusal", message.Refusal,
-		)
+		)...)
 		return fmt.Errorf("create chat completion: model refusal: %s", message.Refusal)
 	}
 	content := strings.TrimSpace(message.Content)
 	if content == "" {
-		slog.Error("Structured LLM call returned empty content",
+		slog.Error("Structured LLM call returned empty content", structuredLogArgs(req,
 			"schema_name", req.Name,
 			"model", g.model,
 			"duration", time.Since(startedAt).String(),
@@ -251,7 +263,7 @@ func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req 
 			"message", message.RawJSON(),
 			"provider", provider,
 			"openrouter_metadata", metadata,
-		)
+		)...)
 		return errors.New("create chat completion: empty structured content")
 	}
 
@@ -259,7 +271,7 @@ func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req 
 	decoder := json.NewDecoder(bytes.NewBufferString(content))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&output); err != nil {
-		slog.Error("Failed to decode structured LLM content",
+		slog.Error("Failed to decode structured LLM content", structuredLogArgs(req,
 			"schema_name", req.Name,
 			"model", g.model,
 			"duration", time.Since(startedAt).String(),
@@ -271,13 +283,13 @@ func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req 
 			"provider", provider,
 			"openrouter_metadata", metadata,
 			"error", err,
-		)
+		)...)
 		return fmt.Errorf("%w: decode structured content: %w", errStructuredDecode, err)
 	}
 	var trailing struct{}
 	// decode and validate that result is a single valid JSON
 	if err := decoder.Decode(&trailing); err != io.EOF {
-		slog.Error("Structured LLM content contained trailing JSON tokens",
+		slog.Error("Structured LLM content contained trailing JSON tokens", structuredLogArgs(req,
 			"schema_name", req.Name,
 			"model", g.model,
 			"duration", time.Since(startedAt).String(),
@@ -287,11 +299,11 @@ func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req 
 			"content", content,
 			"provider", provider,
 			"openrouter_metadata", metadata,
-		)
+		)...)
 		return fmt.Errorf("%w: decode structured content: trailing JSON tokens", errStructuredDecode)
 	}
 	*req.Output = output
-	slog.Debug("Structured LLM call completed",
+	slog.Debug("Structured LLM call completed", structuredLogArgs(req,
 		"schema_name", req.Name,
 		"model", g.model,
 		"duration", time.Since(startedAt).String(),
@@ -302,11 +314,31 @@ func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req 
 		"openrouter_metadata", metadata,
 		"raw_response_bytes", len(chat.RawJSON()),
 		// "content", content,
-	)
+	)...)
 	return nil
 }
 
+func structuredLogArgs[T any](req structuredRequest[T], args ...any) []any {
+	if len(req.LogAttrs) == 0 {
+		return args
+	}
+	values := make([]any, 0, len(args)+len(req.LogAttrs))
+	values = append(values, args...)
+	values = append(values, req.LogAttrs...)
+	return values
+}
+
 func (g *LLMGenerator) createChatCompletion(ctx context.Context, params openai.ChatCompletionNewParams, extraOpts ...option.RequestOption) (*openai.ChatCompletion, error) {
+	return g.createChatCompletionWithTimeout(ctx, llmChatCompletionTimeout, params, extraOpts...)
+}
+
+func (g *LLMGenerator) createChatCompletionWithTimeout(ctx context.Context, timeout time.Duration, params openai.ChatCompletionNewParams, extraOpts ...option.RequestOption) (*openai.ChatCompletion, error) {
+	if timeout <= 0 {
+		timeout = llmChatCompletionTimeout
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	opts := []option.RequestOption{
 		option.WithHeader("X-OpenRouter-Experimental-Metadata", "enabled"),
 		option.WithJSONSet("provider.require_parameters", true),
@@ -326,8 +358,16 @@ func (g *LLMGenerator) createChatCompletion(ctx context.Context, params openai.C
 		"provider_ignore", g.providerIgnore,
 		"thinking_level", strings.TrimSpace(g.thinkingLevel),
 		"extra_option_count", len(extraOpts),
+		"timeout", timeout.String(),
 	)
-	return g.client.Chat.Completions.New(ctx, params, opts...)
+	return g.client.Chat.Completions.New(requestCtx, params, opts...)
+}
+
+func structuredRequestTimeout[T any](req structuredRequest[T]) time.Duration {
+	if req.Timeout > 0 {
+		return req.Timeout
+	}
+	return llmChatCompletionTimeout
 }
 
 func normalizedProviderList(providers []string) []string {

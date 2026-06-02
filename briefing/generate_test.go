@@ -482,6 +482,90 @@ func TestGenerateBriefingFiltersErroredNewsAndForcesReviewBeforeFinal(t *testing
 	}
 }
 
+func TestGenerateBriefingExcludesNewsAfterProcessingRetryFailure(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	var processedA2Attempts int
+	var agentRequests []map[string]any
+	var finalRequests []map[string]any
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+
+		switch responseSchemaName(requestBody) {
+		case "processed_news":
+			userContent := messageContent(t, requestMessages(t, requestBody)[1])
+			if strings.Contains(userContent, `"id":"a1"`) {
+				writeChatContent(t, w, processedNewsJSON("a1", true, "A1 headline", "A1 summary"))
+				return
+			}
+			if strings.Contains(userContent, `"id":"a2"`) {
+				processedA2Attempts++
+				writeChatContent(t, w, `{`)
+				return
+			}
+			t.Fatalf("unexpected processed news request:\n%s", userContent)
+		case "briefing_email":
+			finalRequests = append(finalRequests, requestBody)
+			writeChatContent(t, w, briefingEmailJSON())
+		default:
+			agentRequests = append(agentRequests, requestBody)
+			writeToolCall(t, w, toolFinishReview, `{"article_ids":["a1"],"selection_rationale":"Reviewed only successfully processed news.","global_context":"No extra global context."}`)
+		}
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	_, err = g.GenerateBriefing(t.Context(), BriefingAgentInput{
+		BriefingDate: "2026-05-30",
+		Session:      "Morning",
+		Articles: []ArticleInput{
+			{ID: "a1", BucketID: "markets", BucketName: "Markets", Title: "A1 title", Link: "https://example.test/a1", ExtractedContent: "A1 full content"},
+			{ID: "a2", BucketID: "policy", BucketName: "Policy", Title: "A2 title", Link: "https://example.test/a2", ExtractedContent: "A2 full content"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("GenerateBriefing() error = %v", err)
+	}
+
+	if processedA2Attempts != maxStructuredDecodeAttempts {
+		t.Fatalf("a2 processing attempts = %d, want %d", processedA2Attempts, maxStructuredDecodeAttempts)
+	}
+	if len(agentRequests) != 1 {
+		t.Fatalf("agent request count = %d, want 1", len(agentRequests))
+	}
+	if len(finalRequests) != 1 {
+		t.Fatalf("final request count = %d, want 1", len(finalRequests))
+	}
+
+	initialPrompt := messageContent(t, requestMessages(t, agentRequests[0])[1])
+	if !strings.Contains(initialPrompt, "A1 summary") {
+		t.Fatalf("successfully processed article missing from agent prompt:\n%s", initialPrompt)
+	}
+	for _, forbidden := range []string{"A2 title", "A2 full content"} {
+		if strings.Contains(initialPrompt, forbidden) {
+			t.Fatalf("failed processed article leaked into agent prompt as %q:\n%s", forbidden, initialPrompt)
+		}
+	}
+
+	finalPrompt := messageContent(t, requestMessages(t, finalRequests[0])[1])
+	for _, forbidden := range []string{"A2 headline", "A2 summary", "A2 title", "A2 full content"} {
+		if strings.Contains(finalPrompt, forbidden) {
+			t.Fatalf("failed processed article leaked into final prompt as %q:\n%s", forbidden, finalPrompt)
+		}
+	}
+}
+
 func TestGenerateBriefingPassesReviewedNewsAndReviewSummaryToFinalComposer(t *testing.T) {
 	t.Parallel()
 
@@ -607,6 +691,116 @@ func TestGenerateFinalBriefingRetriesInvalidNewsCardCount(t *testing.T) {
 		if !strings.Contains(retrySystemPrompt, want) {
 			t.Fatalf("retry prompt missing %q:\n%s", want, retrySystemPrompt)
 		}
+	}
+}
+
+func TestGenerateFinalBriefingMergesDeterministicMarketSnapshot(t *testing.T) {
+	t.Parallel()
+
+	var requestBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		writeChatContent(t, w, briefingEmailJSONWithMarketDrivers(finalNewsCardMin, []MarketDriver{
+			{ID: "sp500", Driver: "Tech led gains."},
+			{ID: "eur_usd", Driver: "Euro traded narrowly."},
+		}))
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	output, err := g.generateFinalBriefing(t.Context(), newBriefingAgentState(BriefingAgentInput{
+		BriefingDate: "2026-05-30",
+		Session:      "Morning",
+		MarketSnapshot: []MarketInput{
+			{ID: "sp500", Name: "S&P 500", Category: "equity_index", Symbol: "^GSPC", Level: "5250.75", DailyChange: "+25.50 (+0.49%)", Timestamp: "2026-05-30T13:00:00Z", Source: "yahoo_chart_api"},
+			{ID: "eur_usd", Name: "EUR/USD", Category: "fx", Symbol: "EURUSD=X", Level: "1.084", DailyChange: "-0.01 (-0.92%)", Timestamp: "2026-05-30T13:01:00Z", Source: "yahoo_chart_api"},
+		},
+	}, nil))
+	if err != nil {
+		t.Fatalf("generateFinalBriefing() error = %v", err)
+	}
+
+	if got := responseSchemaName(requestBody); got != "briefing_email" {
+		t.Fatalf("response schema = %q, want briefing_email", got)
+	}
+	equity := output.MarketSnapshot.EquityIndices
+	if len(equity) != 1 {
+		t.Fatalf("equity item count = %d, want 1", len(equity))
+	}
+	if equity[0].Asset != "S&P 500" || equity[0].Level != "5250.75" || equity[0].DailyChange != "+25.50 (+0.49%)" || equity[0].Timestamp != "2026-05-30T13:00:00Z" || equity[0].Source != "yahoo_chart_api" {
+		t.Fatalf("equity item did not copy deterministic fields: %#v", equity[0])
+	}
+	if equity[0].Driver != "Tech led gains." {
+		t.Fatalf("equity driver = %q, want model driver", equity[0].Driver)
+	}
+	fx := output.MarketSnapshot.FX
+	if len(fx) != 1 {
+		t.Fatalf("fx item count = %d, want 1", len(fx))
+	}
+	if fx[0].Asset != "EUR/USD" || fx[0].DailyChange != "-0.01 (-0.92%)" || fx[0].Driver != "Euro traded narrowly." {
+		t.Fatalf("fx item did not merge correctly: %#v", fx[0])
+	}
+}
+
+func TestBuildDeterministicMarketSnapshotGroupsCategories(t *testing.T) {
+	t.Parallel()
+
+	snapshot := buildDeterministicMarketSnapshot([]MarketInput{
+		{ID: "eq1", Name: "Equity One", Category: "equity_index"},
+		{ID: "fx1", Name: "FX One", Category: "fx"},
+		{ID: "rate1", Name: "Rate One", Category: "rates"},
+		{ID: "commodity1", Name: "Commodity One", Category: "commodity"},
+		{ID: "crypto1", Name: "Crypto One", Category: "crypto"},
+		{ID: "risk1", Name: "Risk One", Category: "risk"},
+	}, []MarketDriver{
+		{ID: "eq1", Driver: "Equity driver."},
+		{ID: "fx1", Driver: "FX driver."},
+		{ID: "rate1", Driver: "Rates driver."},
+		{ID: "commodity1", Driver: "Commodity driver."},
+		{ID: "crypto1", Driver: "Crypto driver."},
+		{ID: "risk1", Driver: "Risk driver."},
+	})
+
+	if len(snapshot.EquityIndices) != 1 || snapshot.EquityIndices[0].Asset != "Equity One" {
+		t.Fatalf("equity grouping failed: %#v", snapshot.EquityIndices)
+	}
+	if len(snapshot.FX) != 1 || snapshot.FX[0].Asset != "FX One" {
+		t.Fatalf("fx grouping failed: %#v", snapshot.FX)
+	}
+	if len(snapshot.RatesBonds) != 1 || snapshot.RatesBonds[0].Asset != "Rate One" {
+		t.Fatalf("rates grouping failed: %#v", snapshot.RatesBonds)
+	}
+	if len(snapshot.CommoditiesCryptoRisk) != 3 {
+		t.Fatalf("commodity/crypto/risk count = %d, want 3: %#v", len(snapshot.CommoditiesCryptoRisk), snapshot.CommoditiesCryptoRisk)
+	}
+	for i, want := range []string{"Commodity One", "Crypto One", "Risk One"} {
+		if snapshot.CommoditiesCryptoRisk[i].Asset != want {
+			t.Fatalf("commodities_crypto_risk[%d] = %q, want %q", i, snapshot.CommoditiesCryptoRisk[i].Asset, want)
+		}
+	}
+}
+
+func TestBuildDeterministicMarketSnapshotFallsBackForMissingDriverAndIgnoresUnknownID(t *testing.T) {
+	t.Parallel()
+
+	snapshot := buildDeterministicMarketSnapshot([]MarketInput{
+		{ID: "sp500", Name: "S&P 500", Category: "equity_index"},
+	}, []MarketDriver{
+		{ID: "unknown", Driver: "Should be ignored."},
+		{ID: "sp500", Driver: "   "},
+	})
+
+	if len(snapshot.EquityIndices) != 1 {
+		t.Fatalf("equity item count = %d, want 1", len(snapshot.EquityIndices))
+	}
+	if snapshot.EquityIndices[0].Driver != "No specific driver provided." {
+		t.Fatalf("driver = %q, want fallback", snapshot.EquityIndices[0].Driver)
 	}
 }
 
@@ -864,13 +1058,42 @@ func TestBriefingSystemPromptDefinesFullNewsCardLimit(t *testing.T) {
 		"5 to 15 total full news cards across top_news_by_topic",
 		"len(markets_macro) + len(politics_policy) + len(war_geopolitical_risk) + len(technology_ai)",
 		"never exceed 15 total full news cards",
-		"copy that daily_change format exactly as '+absolute (+percent%)'",
-		"do not convert it to percent-only text",
+		"do not output market_snapshot",
+		"output market_drivers only",
+		"using each supplied market id exactly",
 		"every top_news_by_topic card must include sources as label/url objects",
 		"every regional_radar item must include sources as label/url objects",
 	} {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("briefing prompt missing %q:\n%s", want, prompt)
+		}
+	}
+}
+
+func TestBriefingEmailDraftSchemaUsesMarketDriversNotMarketSnapshot(t *testing.T) {
+	t.Parallel()
+
+	data, err := json.Marshal(briefingEmailDraftSchema())
+	if err != nil {
+		t.Fatalf("marshal briefing draft schema: %v", err)
+	}
+	schema := string(data)
+	for _, want := range []string{
+		"market_drivers",
+		"Market id copied exactly from the supplied market_snapshot input.",
+		"Do not include market_snapshot in this output.",
+	} {
+		if !strings.Contains(schema, want) {
+			t.Fatalf("briefing draft schema missing %q:\n%s", want, schema)
+		}
+	}
+	for _, forbidden := range []string{
+		`"market_snapshot"`,
+		`"daily_change"`,
+		"Do not output percent-only values",
+	} {
+		if strings.Contains(schema, forbidden) {
+			t.Fatalf("briefing draft schema unexpectedly contains %q:\n%s", forbidden, schema)
 		}
 	}
 }
@@ -921,13 +1144,18 @@ func briefingEmailJSON() string {
 }
 
 func briefingEmailJSONWithCardCount(cardCount int) string {
-	data, _ := json.Marshal(BriefingEmail{
+	return briefingEmailJSONWithMarketDrivers(cardCount, nil)
+}
+
+func briefingEmailJSONWithMarketDrivers(cardCount int, drivers []MarketDriver) string {
+	data, _ := json.Marshal(BriefingEmailDraft{
 		Subject:             "GP News",
 		CriticalityScore:    5,
 		PriorityLevel:       "Watch",
 		MainDriver:          "Rates",
 		TodaysSignal:        "Mixed",
 		ReadThisFirst:       []string{"One", "Two", "Three"},
+		MarketDrivers:       drivers,
 		MacroDataWatch:      []string{},
 		PolicySignalWatch:   []string{},
 		TopNewsByTopic:      topNewsByTopicWithCardCount(cardCount),
