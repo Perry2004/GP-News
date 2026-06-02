@@ -112,7 +112,8 @@ Graph key:
    - The final result must contain 5 to 15 total full news cards across all `top_news_by_topic` arrays combined. If the model returns a count outside that range, generation is retried once and then fails loudly.
    - Full news cards and regional radar items carry their own `sources` label/url objects; there is no separate top-level sources section.
    - This phase also uses the strict JSON schema response format, with the `BriefingEmail` schema.
-   - It returns the current `BriefingEmail` JSON shape used by the email template. The email template renders market `dailyChange`/`daily_change` inline in the existing Market Snapshot section.
+   - It returns the current `BriefingEmail` JSON shape used by the email template. The email template renders market `daily_change` inline in the existing Market Snapshot section.
+   - After this package returns `BriefingEmail`, `main.go` renders the pre-exported React Email HTML template and writes `cache/briefing_email.html`.
    - The old post-generation verification step is no longer part of the runtime path.
 
 ## OpenRouter Notes

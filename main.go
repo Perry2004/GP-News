@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	htmltemplate "html/template"
 	"log/slog"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -31,6 +35,11 @@ type config struct {
 	LLMThinkingLevel       string   `env:"LLM_THINKING_LEVEL" envDefault:"medium"`
 	LLMProviderIgnore      []string `env:"LLM_PROVIDER_IGNORE" envSeparator:","`
 }
+
+const (
+	emailTemplatePath     = "email/template/out/template.html"
+	renderedEmailFilePath = "cache/briefing_email.html"
+)
 
 func main() {
 	// [TODO] Load config and credentials
@@ -89,7 +98,11 @@ func main() {
 	}
 	slog.Info("Generated briefing", "output", briefingEmail)
 
-	// [TODO] Render email template
+	renderedEmailPath, err := renderBriefingEmailHTML(briefingEmail)
+	if err != nil {
+		panic(fmt.Errorf("failed to render briefing email: %w", err))
+	}
+	slog.Info("Rendered briefing email", "file", renderedEmailPath)
 
 	// [TODO] Send email
 }
@@ -194,6 +207,69 @@ func buildMarketHistoryInputs(history []ingest.MarketHistoryPoint) []briefing.Ma
 		})
 	}
 	return points
+}
+
+func renderBriefingEmailHTML(briefingEmail briefing.BriefingEmail) (string, error) {
+	return renderBriefingEmailHTMLWithPaths(briefingEmail, emailTemplatePath, renderedEmailFilePath)
+}
+
+func renderBriefingEmailHTMLWithPaths(briefingEmail briefing.BriefingEmail, templatePath string, outputPath string) (string, error) {
+	data, err := briefingTemplateData(briefingEmail)
+	if err != nil {
+		return "", err
+	}
+	if err := executeHTMLTemplate(templatePath, outputPath, data); err != nil {
+		return "", err
+	}
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		return "", fmt.Errorf("stat rendered email HTML: %w", err)
+	}
+	slog.Info("Briefing email HTML written", "file", outputPath, "bytes", info.Size())
+	return outputPath, nil
+}
+
+func briefingTemplateData(briefingEmail briefing.BriefingEmail) (map[string]any, error) {
+	payload, err := json.Marshal(briefingEmail)
+	if err != nil {
+		return nil, fmt.Errorf("marshal briefing email: %w", err)
+	}
+	var data map[string]any
+	if err := json.Unmarshal(payload, &data); err != nil {
+		return nil, fmt.Errorf("unmarshal briefing email template data: %w", err)
+	}
+	data["full_news_card_count"] = len(briefingEmail.TopNewsByTopic.MarketsMacro) +
+		len(briefingEmail.TopNewsByTopic.PoliticsPolicy) +
+		len(briefingEmail.TopNewsByTopic.WarGeopoliticalRisk) +
+		len(briefingEmail.TopNewsByTopic.TechnologyAI)
+	return data, nil
+}
+
+func executeHTMLTemplate(templatePath string, outputPath string, data any) error {
+	templateBytes, err := os.ReadFile(templatePath)
+	if err != nil {
+		return fmt.Errorf("read email template %q: %w", templatePath, err)
+	}
+	tmpl, err := htmltemplate.New(filepath.Base(templatePath)).Funcs(htmltemplate.FuncMap{
+		"inc": func(value int) int {
+			return value + 1
+		},
+	}).Parse(string(templateBytes))
+	if err != nil {
+		return fmt.Errorf("parse email template %q: %w", templatePath, err)
+	}
+
+	var output bytes.Buffer
+	if err := tmpl.Execute(&output, data); err != nil {
+		return fmt.Errorf("execute email template %q: %w", templatePath, err)
+	}
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		return fmt.Errorf("create rendered email directory: %w", err)
+	}
+	if err := os.WriteFile(outputPath, output.Bytes(), 0644); err != nil {
+		return fmt.Errorf("write rendered email HTML %q: %w", outputPath, err)
+	}
+	return nil
 }
 
 // Returns Morning or Night based on the time.
