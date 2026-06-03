@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -610,7 +611,14 @@ func TestGenerateBriefingPassesReviewedNewsAndReviewSummaryToFinalComposer(t *te
 	}))
 	defer server.Close()
 
-	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	cacheDir := t.TempDir()
+	g, err := NewLLMGenerator(Config{
+		BaseURL:     server.URL,
+		APIKey:      "test-key",
+		Model:       TestModel,
+		PersistData: true,
+		CacheDir:    cacheDir,
+	})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -637,6 +645,33 @@ func TestGenerateBriefingPassesReviewedNewsAndReviewSummaryToFinalComposer(t *te
 		if !strings.Contains(finalPrompt, want) {
 			t.Fatalf("final prompt missing %q:\n%s", want, finalPrompt)
 		}
+	}
+
+	var processed []ProcessedNews
+	readCachedTestJSON(t, cachedBriefingFilePath(cacheDir, processedNewsCacheFileName), &processed)
+	if len(processed) != 2 {
+		t.Fatalf("cached processed news count = %d, want 2", len(processed))
+	}
+
+	var finalInput BriefingInput
+	readCachedTestJSON(t, cachedBriefingFilePath(cacheDir, finalBriefingInputCacheFileName), &finalInput)
+	if len(finalInput.ReviewedNews) != 1 || finalInput.ReviewedNews[0].News.ArticleID != "a2" {
+		t.Fatalf("cached final input reviewed news = %#v, want only a2", finalInput.ReviewedNews)
+	}
+	if finalInput.ReviewSummary.GlobalContext != "Policy risk is the main thread." {
+		t.Fatalf("cached final input review summary = %#v", finalInput.ReviewSummary)
+	}
+
+	var finalDraft BriefingEmailDraft
+	readCachedTestJSON(t, cachedBriefingFilePath(cacheDir, finalBriefingDraftCacheFileName), &finalDraft)
+	if finalDraft.Subject != "GP News" {
+		t.Fatalf("cached final draft subject = %q, want GP News", finalDraft.Subject)
+	}
+
+	var finalOutput BriefingEmail
+	readCachedTestJSON(t, cachedBriefingFilePath(cacheDir, finalBriefingOutputCacheFileName), &finalOutput)
+	if finalOutput.Subject != "GP News" || finalNewsCardCount(finalOutput) != finalNewsCardMin {
+		t.Fatalf("cached final output = %#v", finalOutput)
 	}
 }
 
@@ -1198,6 +1233,17 @@ func topNewsByTopicWithCardCount(cardCount int) TopNewsByTopic {
 		}
 	}
 	return topics
+}
+
+func readCachedTestJSON(t *testing.T, path string, target any) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read cache file %q: %v", path, err)
+	}
+	if err := json.Unmarshal(data, target); err != nil {
+		t.Fatalf("unmarshal cache file %q: %v", path, err)
+	}
 }
 
 func writeChatContent(t *testing.T, w http.ResponseWriter, content string) {

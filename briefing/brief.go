@@ -29,12 +29,14 @@ func (g *LLMGenerator) generateFinalBriefing(ctx context.Context, state *briefin
 		"market_item_count", len(input.MarketSnapshot),
 		"reviewed_news_count", len(input.ReviewedNews),
 	)
+	g.persistCacheJSON(finalBriefingInputCacheFileName, input)
 
 	output, err := g.generateFinalBriefingWithPrompt(ctx, input, briefingSystemPrompt())
 	if err != nil {
 		return BriefingEmail{}, err
 	}
 	if err := validateFinalNewsCardCount(output); err == nil {
+		g.persistCacheJSON(finalBriefingOutputCacheFileName, output)
 		return output, nil
 	}
 
@@ -51,6 +53,7 @@ func (g *LLMGenerator) generateFinalBriefing(ctx context.Context, state *briefin
 	if err := validateFinalNewsCardCount(output); err != nil {
 		return BriefingEmail{}, err
 	}
+	g.persistCacheJSON(finalBriefingOutputCacheFileName, output)
 	return output, nil
 }
 
@@ -68,6 +71,7 @@ func (g *LLMGenerator) generateFinalBriefingWithPrompt(ctx context.Context, inpu
 	if err != nil {
 		return BriefingEmail{}, err
 	}
+	g.persistCacheJSON(finalBriefingDraftCacheFileName, draft)
 	return mergeBriefingDraft(input, draft), nil
 }
 

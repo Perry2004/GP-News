@@ -39,6 +39,7 @@ type config struct {
 const (
 	emailTemplatePath     = "email/template/out/template.html"
 	renderedEmailFilePath = "cache/briefing_email.html"
+	briefingCacheDir      = "cache"
 )
 
 func main() {
@@ -59,6 +60,20 @@ func main() {
 
 	ctx := context.Background()
 
+	if !cfg.EnableFetching {
+		slog.Info("Fetching disabled; loading cached final briefing", "cache_dir", briefingCacheDir)
+		briefingEmail, err := briefing.LoadCachedBriefingEmail(briefingCacheDir)
+		if err != nil {
+			panic(fmt.Errorf("failed to load cached final briefing: %w", err))
+		}
+		renderedEmailPath, err := renderBriefingEmailHTML(briefingEmail)
+		if err != nil {
+			panic(fmt.Errorf("failed to render cached briefing email: %w", err))
+		}
+		slog.Info("Rendered cached briefing email", "file", renderedEmailPath)
+		return
+	}
+
 	marketValues, categoryBuckets, regionBuckets, err := ingest.RetrieveData(ctx, ingest.Config{
 		NewsDataAPIKey: cfg.NewsDataAPIKey,
 		EnableFetching: cfg.EnableFetching,
@@ -76,6 +91,8 @@ func main() {
 		Temperature:         cfg.LLMTemperature,
 		ThinkingLevel:       cfg.LLMThinkingLevel,
 		ProviderIgnore:      cfg.LLMProviderIgnore,
+		PersistData:         cfg.PersistData,
+		CacheDir:            briefingCacheDir,
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to create LLM generator: %w", err))

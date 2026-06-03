@@ -24,6 +24,8 @@ type Config struct {
 	Temperature         float64
 	ThinkingLevel       string
 	ProviderIgnore      []string
+	PersistData         bool
+	CacheDir            string
 }
 
 type LLMGenerator struct {
@@ -33,6 +35,8 @@ type LLMGenerator struct {
 	temperature         float64
 	thinkingLevel       string
 	providerIgnore      []string // OpenRouter providers to avoid when their structured-output behavior is unreliable.
+	persistData         bool
+	cacheDir            string
 }
 
 func NewLLMGenerator(cfg Config) (*LLMGenerator, error) {
@@ -63,6 +67,8 @@ func NewLLMGenerator(cfg Config) (*LLMGenerator, error) {
 		"temperature", cfg.Temperature,
 		"thinking_level", cfg.ThinkingLevel,
 		"provider_ignore", normalizedProviderList(cfg.ProviderIgnore),
+		"persist_data", cfg.PersistData,
+		"cache_dir", normalizedCacheDir(cfg.CacheDir),
 	)
 
 	return &LLMGenerator{
@@ -72,6 +78,8 @@ func NewLLMGenerator(cfg Config) (*LLMGenerator, error) {
 		temperature:         cfg.Temperature,
 		thinkingLevel:       cfg.ThinkingLevel,
 		providerIgnore:      normalizedProviderList(cfg.ProviderIgnore),
+		persistData:         cfg.PersistData,
+		cacheDir:            normalizedCacheDir(cfg.CacheDir),
 	}, nil
 }
 
@@ -89,6 +97,7 @@ func (g *LLMGenerator) GenerateBriefing(ctx context.Context, input BriefingAgent
 	if err != nil {
 		return BriefingEmail{}, err
 	}
+	g.persistCacheJSON(processedNewsCacheFileName, processed)
 	processedArticleIDs := processedNewsArticleIDSet(processed)
 	reviewArticles := filterArticlesByIDSet(validArticles, processedArticleIDs)
 	input.Articles = reviewArticles
