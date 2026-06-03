@@ -595,6 +595,7 @@ const styles = {
   },
   marketGroup: {
     marginTop: "10px",
+    fontSize: "0",
   },
   groupTitle: {
     margin: "14px 0 8px",
@@ -605,10 +606,17 @@ const styles = {
   },
   marketCard: {
     marginTop: "8px",
+    marginRight: "8px",
+    display: "inline-block",
+    width: "48%",
+    minWidth: "260px",
+    maxWidth: "100%",
     padding: "12px 14px",
     backgroundColor: "#ffffff",
     border: "1px solid #d9e0e7",
     borderRadius: "8px",
+    boxSizing: "border-box",
+    verticalAlign: "top",
   },
   marketLine: {
     margin: "0 0 6px",
