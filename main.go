@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	htmltemplate "html/template"
@@ -41,6 +42,9 @@ const (
 	renderedEmailFilePath = "cache/briefing_email.html"
 	briefingCacheDir      = "cache"
 )
+
+//go:embed email/template/out/template.html
+var embeddedEmailTemplate []byte
 
 func main() {
 	// [TODO] Load config and credentials
@@ -227,15 +231,28 @@ func buildMarketHistoryInputs(history []ingest.MarketHistoryPoint) []briefing.Ma
 }
 
 func renderBriefingEmailHTML(briefingEmail briefing.BriefingEmail) (string, error) {
-	return renderBriefingEmailHTMLWithPaths(briefingEmail, emailTemplatePath, renderedEmailFilePath)
+	return renderBriefingEmailHTMLWithBytes(
+		briefingEmail,
+		filepath.Base(emailTemplatePath),
+		renderedEmailFilePath,
+		embeddedEmailTemplate,
+	)
 }
 
 func renderBriefingEmailHTMLWithPaths(briefingEmail briefing.BriefingEmail, templatePath string, outputPath string) (string, error) {
+	templateBytes, err := os.ReadFile(templatePath)
+	if err != nil {
+		return "", fmt.Errorf("read email template %q: %w", templatePath, err)
+	}
+	return renderBriefingEmailHTMLWithBytes(briefingEmail, filepath.Base(templatePath), outputPath, templateBytes)
+}
+
+func renderBriefingEmailHTMLWithBytes(briefingEmail briefing.BriefingEmail, templateName string, outputPath string, templateBytes []byte) (string, error) {
 	data, err := briefingTemplateData(briefingEmail)
 	if err != nil {
 		return "", err
 	}
-	if err := executeHTMLTemplate(templatePath, outputPath, data); err != nil {
+	if err := executeHTMLTemplateBytes(templateName, outputPath, templateBytes, data); err != nil {
 		return "", err
 	}
 	info, err := os.Stat(outputPath)
@@ -267,18 +284,22 @@ func executeHTMLTemplate(templatePath string, outputPath string, data any) error
 	if err != nil {
 		return fmt.Errorf("read email template %q: %w", templatePath, err)
 	}
-	tmpl, err := htmltemplate.New(filepath.Base(templatePath)).Funcs(htmltemplate.FuncMap{
+	return executeHTMLTemplateBytes(filepath.Base(templatePath), outputPath, templateBytes, data)
+}
+
+func executeHTMLTemplateBytes(templateName string, outputPath string, templateBytes []byte, data any) error {
+	tmpl, err := htmltemplate.New(templateName).Funcs(htmltemplate.FuncMap{
 		"inc": func(value int) int {
 			return value + 1
 		},
 	}).Parse(string(templateBytes))
 	if err != nil {
-		return fmt.Errorf("parse email template %q: %w", templatePath, err)
+		return fmt.Errorf("parse email template %q: %w", templateName, err)
 	}
 
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, data); err != nil {
-		return fmt.Errorf("execute email template %q: %w", templatePath, err)
+		return fmt.Errorf("execute email template %q: %w", templateName, err)
 	}
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
 		return fmt.Errorf("create rendered email directory: %w", err)
