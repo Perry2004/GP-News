@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"gpnews/briefing"
-	"gpnews/ingest"
+	"github.com/Perry2004/GP-News/briefing"
+	"github.com/Perry2004/GP-News/ingest"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"

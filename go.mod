@@ -1,4 +1,4 @@
-module gpnews
+module github.com/Perry2004/GP-News
 
 go 1.26.3
 
