@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Perry2004/GP-News/briefing"
+	"github.com/Perry2004/GP-News/email"
 	"github.com/Perry2004/GP-News/ingest"
 
 	"github.com/caarlos0/env/v11"
@@ -35,6 +36,10 @@ type config struct {
 	LLMTemperature         float64  `env:"LLM_TEMPERATURE" envDefault:"0"`
 	LLMThinkingLevel       string   `env:"LLM_THINKING_LEVEL" envDefault:"medium"`
 	LLMProviderIgnore      []string `env:"LLM_PROVIDER_IGNORE" envSeparator:","`
+	SendEmail              bool     `env:"SEND_EMAIL" envDefault:"false"`
+	EmailFrom              string   `env:"EMAIL_FROM"`
+	EmailTo                []string `env:"EMAIL_TO" envSeparator:","`
+	AWSSESRegion           string   `env:"AWS_SES_REGION"`
 }
 
 const (
@@ -75,6 +80,9 @@ func main() {
 			panic(fmt.Errorf("failed to render cached briefing email: %w", err))
 		}
 		slog.Info("Rendered cached briefing email", "file", renderedEmailPath)
+		if err := sendRenderedBriefingEmail(ctx, cfg, briefingEmail, renderedEmailPath); err != nil {
+			panic(fmt.Errorf("failed to send cached briefing email: %w", err))
+		}
 		return
 	}
 
@@ -125,7 +133,9 @@ func main() {
 	}
 	slog.Info("Rendered briefing email", "file", renderedEmailPath)
 
-	// [TODO] Send email
+	if err := sendRenderedBriefingEmail(ctx, cfg, briefingEmail, renderedEmailPath); err != nil {
+		panic(fmt.Errorf("failed to send briefing email: %w", err))
+	}
 }
 
 func loadEnv() string {
@@ -148,7 +158,55 @@ func validateConfig(cfg config) error {
 	if cfg.EnableFetching && strings.TrimSpace(cfg.NewsDataAPIKey) == "" {
 		return fmt.Errorf("invalid config: NEWS_DATA_API_KEY is required when ENABLE_FETCHING=true")
 	}
+	if cfg.SendEmail {
+		if strings.TrimSpace(cfg.EmailFrom) == "" {
+			return fmt.Errorf("invalid config: EMAIL_FROM is required when SEND_EMAIL=true")
+		}
+		if len(nonEmptyStrings(cfg.EmailTo)) == 0 {
+			return fmt.Errorf("invalid config: EMAIL_TO is required when SEND_EMAIL=true")
+		}
+	}
 	return nil
+}
+
+func sendRenderedBriefingEmail(ctx context.Context, cfg config, briefingEmail briefing.BriefingEmail, renderedEmailPath string) error {
+	if !cfg.SendEmail {
+		slog.Info("Email sending disabled", "send_email", cfg.SendEmail)
+		return nil
+	}
+
+	htmlBody, err := os.ReadFile(renderedEmailPath)
+	if err != nil {
+		return fmt.Errorf("read rendered email HTML %q: %w", renderedEmailPath, err)
+	}
+
+	sender, err := email.NewSESSender(ctx, email.Config{
+		From:   cfg.EmailFrom,
+		To:     cfg.EmailTo,
+		Region: cfg.AWSSESRegion,
+	})
+	if err != nil {
+		return err
+	}
+
+	messageID, err := sender.SendHTML(ctx, briefingEmail.Subject, string(htmlBody))
+	if err != nil {
+		return err
+	}
+
+	slog.Info("Sent briefing email", "message_id", messageID, "recipient_count", len(nonEmptyStrings(cfg.EmailTo)))
+	return nil
+}
+
+func nonEmptyStrings(values []string) []string {
+	nonEmpty := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			nonEmpty = append(nonEmpty, value)
+		}
+	}
+	return nonEmpty
 }
 
 // Returns a list of articles with valid links, de-duplicated by link.

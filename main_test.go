@@ -48,6 +48,78 @@ func TestConfigParsesProviderIgnoreList(t *testing.T) {
 	}
 }
 
+func TestConfigParsesEmailToList(t *testing.T) {
+	t.Setenv("EMAIL_TO", "reader@example.com,desk@example.com")
+
+	cfg, err := env.ParseAs[config]()
+	if err != nil {
+		t.Fatalf("ParseAs() error = %v", err)
+	}
+
+	if len(cfg.EmailTo) != 2 || cfg.EmailTo[0] != "reader@example.com" || cfg.EmailTo[1] != "desk@example.com" {
+		t.Fatalf("EmailTo = %#v, want [reader@example.com desk@example.com]", cfg.EmailTo)
+	}
+	if cfg.SendEmail {
+		t.Fatal("SendEmail defaulted to true")
+	}
+}
+
+func TestValidateConfigRequiresEmailFieldsOnlyWhenSending(t *testing.T) {
+	if err := validateConfig(config{EnableFetching: false}); err != nil {
+		t.Fatalf("validateConfig() with SEND_EMAIL=false error = %v", err)
+	}
+
+	tests := []struct {
+		name string
+		cfg  config
+		want string
+	}{
+		{
+			name: "from",
+			cfg: config{
+				EnableFetching: false,
+				SendEmail:      true,
+				EmailTo:        []string{"reader@example.com"},
+			},
+			want: "EMAIL_FROM is required",
+		},
+		{
+			name: "to",
+			cfg: config{
+				EnableFetching: false,
+				SendEmail:      true,
+				EmailFrom:      "sender@example.com",
+				EmailTo:        []string{"", " "},
+			},
+			want: "EMAIL_TO is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateConfig(tt.cfg)
+			if err == nil {
+				t.Fatal("validateConfig() returned nil error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want %q", err.Error(), tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateConfigAcceptsSendEmailConfig(t *testing.T) {
+	err := validateConfig(config{
+		EnableFetching: false,
+		SendEmail:      true,
+		EmailFrom:      "sender@example.com",
+		EmailTo:        []string{"reader@example.com"},
+	})
+	if err != nil {
+		t.Fatalf("validateConfig() error = %v", err)
+	}
+}
+
 func TestBuildMarketInputsIncludesDailyChangeAndHistory(t *testing.T) {
 	marketTime := time.Unix(1717000000, 0)
 	historyTime := time.Unix(1716739200, 0)

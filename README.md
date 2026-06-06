@@ -9,4 +9,5 @@
 
 ## Email Rendering
 - `make run` exports the React Email template first, then Go renders the generated briefing into `cache/briefing_email.html`.
-- Email sending is intentionally not wired yet; the rendered HTML file is the handoff point until mail infrastructure is available.
+- Set `SEND_EMAIL=true`, `EMAIL_FROM`, and comma-separated `EMAIL_TO` to send the rendered briefing with Amazon SES.
+- SES uses the AWS SDK default credential chain.
