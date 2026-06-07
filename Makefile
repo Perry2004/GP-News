@@ -26,7 +26,7 @@ build-container:
 build-lambda:
 	$(DOCKER) buildx build --target lambda --platform $(LAMBDA_PLATFORM) --provenance=false -t $(LAMBDA_IMAGE) .
 
-check: go-check email-template-check
+check: email-template-check go-check
 
 go-check: go-format tidy lint test
 
@@ -50,7 +50,7 @@ email-template-format:
 email-template-typecheck:
 	cd $(EMAIL_TEMPLATE_DIR) && $(PNPM) typecheck
 
-email-template-check: email-template-format email-template-typecheck
+email-template-check: email-template-format email-template-typecheck email-template-export
 
 email-template-export: email-template-install email-template-typecheck
 	cd $(EMAIL_TEMPLATE_DIR) && $(PNPM) export
