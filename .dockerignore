@@ -1,9 +1,8 @@
+.env
 .git
 .DS_Store
-.env
-bin
-cache
+bin/
+cache/
 coverage.out
-email/template/node_modules
-email/template/out
-node_modules
+email/template/out/
+email/template/node_modules/

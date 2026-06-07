@@ -7,11 +7,13 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
-	marketValuesFilePath = "cache/market_values.json"
-	newsDataFilePath     = "cache/news_data.json"
+	defaultCacheDir      = "cache"
+	marketValuesFileName = "market_values.json"
+	newsDataFileName     = "news_data.json"
 )
 
 type cachedNewsDataJSON struct {
@@ -23,9 +25,13 @@ type Config struct {
 	NewsDataAPIKey string
 	EnableFetching bool
 	PersistData    bool
+	CacheDir       string
 }
 
 func RetrieveData(ctx context.Context, cfg Config) ([]MarketValue, []NewsArticleBucket, []NewsArticleBucket, error) {
+	marketValuesFilePath := cacheFilePath(cfg.CacheDir, marketValuesFileName)
+	newsDataFilePath := cacheFilePath(cfg.CacheDir, newsDataFileName)
+
 	if !cfg.EnableFetching {
 		slog.Info("Fetching disabled; loading cached data JSON", "market_file", marketValuesFilePath, "news_file", newsDataFilePath)
 		marketValues, categoryBuckets, regionBuckets, err := LoadDataJSON(marketValuesFilePath, newsDataFilePath)
@@ -129,6 +135,18 @@ func StoreDataJSON(marketFilePath string, newsFilePath string, marketValues []Ma
 		return fmt.Errorf("failed to write news data JSON: %w", err)
 	}
 	return nil
+}
+
+func cacheFilePath(cacheDir string, fileName string) string {
+	return filepath.Join(normalizedCacheDir(cacheDir), fileName)
+}
+
+func normalizedCacheDir(cacheDir string) string {
+	cacheDir = strings.TrimSpace(cacheDir)
+	if cacheDir == "" {
+		return defaultCacheDir
+	}
+	return cacheDir
 }
 
 func LoadDataJSON(marketFilePath string, newsFilePath string) ([]MarketValue, []NewsArticleBucket, []NewsArticleBucket, error) {

@@ -1,9 +1,8 @@
-package main
+package app
 
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	htmltemplate "html/template"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/Perry2004/GP-News/briefing"
 	"github.com/Perry2004/GP-News/email"
+	emailtemplate "github.com/Perry2004/GP-News/email/template"
 	"github.com/Perry2004/GP-News/ingest"
 
 	"github.com/caarlos0/env/v11"
@@ -40,59 +40,75 @@ type config struct {
 	EmailFrom              string   `env:"EMAIL_FROM"`
 	EmailTo                []string `env:"EMAIL_TO" envSeparator:","`
 	AWSSESRegion           string   `env:"AWS_SES_REGION"`
+	CacheDir               string   `env:"CACHE_DIR" envDefault:"cache"`
 }
 
 const (
 	emailTemplatePath     = "email/template/out/template.html"
-	renderedEmailFilePath = "cache/briefing_email.html"
-	briefingCacheDir      = "cache"
+	renderedEmailFileName = "briefing_email.html"
 )
 
-//go:embed email/template/out/template.html
-var embeddedEmailTemplate []byte
+type Result struct {
+	Status            string `json:"status"`
+	Subject           string `json:"subject,omitempty"`
+	RenderedEmailPath string `json:"rendered_email_path,omitempty"`
+	EmailSent         bool   `json:"email_sent"`
+	MessageID         string `json:"message_id,omitempty"`
+}
 
-func main() {
-	// [TODO] Load config and credentials
-	envName := loadEnv()
+var runForLambda = Run
+
+func HandleLambda(ctx context.Context, event json.RawMessage) (Result, error) {
+	_ = event
+	return runForLambda(ctx)
+}
+
+func Run(ctx context.Context) (Result, error) {
+	envName, err := loadEnv()
+	if err != nil {
+		return Result{}, err
+	}
 	cfg, err := env.ParseAs[config]()
 	if err != nil {
-		panic(err)
+		return Result{}, err
 	}
 	if err := validateConfig(cfg); err != nil {
-		panic(err)
+		return Result{}, err
 	}
 
-	configureLogger(cfg)
+	if err := configureLogger(cfg); err != nil {
+		return Result{}, err
+	}
 
 	slog.Debug("GP-News configuration loaded", "environment", envName, "config", maskConfigForLogging(cfg))
 	slog.Info("Starting GP-News")
 
-	ctx := context.Background()
-
 	if !cfg.EnableFetching {
-		slog.Info("Fetching disabled; loading cached final briefing", "cache_dir", briefingCacheDir)
-		briefingEmail, err := briefing.LoadCachedBriefingEmail(briefingCacheDir)
+		slog.Info("Fetching disabled; loading cached final briefing", "cache_dir", cfg.CacheDir)
+		briefingEmail, err := briefing.LoadCachedBriefingEmail(cfg.CacheDir)
 		if err != nil {
-			panic(fmt.Errorf("failed to load cached final briefing: %w", err))
+			return Result{}, fmt.Errorf("failed to load cached final briefing: %w", err)
 		}
-		renderedEmailPath, err := renderBriefingEmailHTML(briefingEmail)
+		renderedEmailPath, err := renderBriefingEmailHTML(briefingEmail, cfg.CacheDir)
 		if err != nil {
-			panic(fmt.Errorf("failed to render cached briefing email: %w", err))
+			return Result{}, fmt.Errorf("failed to render cached briefing email: %w", err)
 		}
 		slog.Info("Rendered cached briefing email", "file", renderedEmailPath)
-		if err := sendRenderedBriefingEmail(ctx, cfg, briefingEmail, renderedEmailPath); err != nil {
-			panic(fmt.Errorf("failed to send cached briefing email: %w", err))
+		messageID, err := sendRenderedBriefingEmail(ctx, cfg, briefingEmail, renderedEmailPath)
+		if err != nil {
+			return Result{}, fmt.Errorf("failed to send cached briefing email: %w", err)
 		}
-		return
+		return resultForBriefing(cfg, briefingEmail, renderedEmailPath, messageID), nil
 	}
 
 	marketValues, categoryBuckets, regionBuckets, err := ingest.RetrieveData(ctx, ingest.Config{
 		NewsDataAPIKey: cfg.NewsDataAPIKey,
 		EnableFetching: cfg.EnableFetching,
 		PersistData:    cfg.PersistData,
+		CacheDir:       cfg.CacheDir,
 	})
 	if err != nil {
-		panic(err)
+		return Result{}, err
 	}
 
 	llm, err := briefing.NewLLMGenerator(briefing.Config{
@@ -104,10 +120,10 @@ func main() {
 		ThinkingLevel:       cfg.LLMThinkingLevel,
 		ProviderIgnore:      cfg.LLMProviderIgnore,
 		PersistData:         cfg.PersistData,
-		CacheDir:            briefingCacheDir,
+		CacheDir:            cfg.CacheDir,
 	})
 	if err != nil {
-		panic(fmt.Errorf("failed to create LLM generator: %w", err))
+		return Result{}, fmt.Errorf("failed to create LLM generator: %w", err)
 	}
 
 	now := time.Now()
@@ -123,35 +139,38 @@ func main() {
 		Articles:       articles,
 	})
 	if err != nil {
-		panic(fmt.Errorf("failed to generate briefing: %w", err))
+		return Result{}, fmt.Errorf("failed to generate briefing: %w", err)
 	}
 	slog.Info("Generated briefing", "output", briefingEmail)
 
-	renderedEmailPath, err := renderBriefingEmailHTML(briefingEmail)
+	renderedEmailPath, err := renderBriefingEmailHTML(briefingEmail, cfg.CacheDir)
 	if err != nil {
-		panic(fmt.Errorf("failed to render briefing email: %w", err))
+		return Result{}, fmt.Errorf("failed to render briefing email: %w", err)
 	}
 	slog.Info("Rendered briefing email", "file", renderedEmailPath)
 
-	if err := sendRenderedBriefingEmail(ctx, cfg, briefingEmail, renderedEmailPath); err != nil {
-		panic(fmt.Errorf("failed to send briefing email: %w", err))
+	messageID, err := sendRenderedBriefingEmail(ctx, cfg, briefingEmail, renderedEmailPath)
+	if err != nil {
+		return Result{}, fmt.Errorf("failed to send briefing email: %w", err)
 	}
+
+	return resultForBriefing(cfg, briefingEmail, renderedEmailPath, messageID), nil
 }
 
-func loadEnv() string {
+func loadEnv() (string, error) {
 	envName := os.Getenv("ENVIRONMENT")
 	switch strings.ToLower(strings.TrimSpace(envName)) {
 	case "", "dev":
 		if err := godotenv.Load(); err != nil {
-			panic(fmt.Errorf("failed to load .env file: %w", err))
+			return "", fmt.Errorf("failed to load .env file: %w", err)
 		}
 	case "prod":
 		// Skip loading .env
 	default:
-		panic(fmt.Errorf("invalid environment %q: expected dev or prod", envName))
+		return "", fmt.Errorf("invalid environment %q: expected dev or prod", envName)
 	}
 
-	return envName
+	return envName, nil
 }
 
 func validateConfig(cfg config) error {
@@ -169,15 +188,15 @@ func validateConfig(cfg config) error {
 	return nil
 }
 
-func sendRenderedBriefingEmail(ctx context.Context, cfg config, briefingEmail briefing.BriefingEmail, renderedEmailPath string) error {
+func sendRenderedBriefingEmail(ctx context.Context, cfg config, briefingEmail briefing.BriefingEmail, renderedEmailPath string) (string, error) {
 	if !cfg.SendEmail {
 		slog.Info("Email sending disabled", "send_email", cfg.SendEmail)
-		return nil
+		return "", nil
 	}
 
 	htmlBody, err := os.ReadFile(renderedEmailPath)
 	if err != nil {
-		return fmt.Errorf("read rendered email HTML %q: %w", renderedEmailPath, err)
+		return "", fmt.Errorf("read rendered email HTML %q: %w", renderedEmailPath, err)
 	}
 
 	sender, err := email.NewSESSender(ctx, email.Config{
@@ -186,16 +205,26 @@ func sendRenderedBriefingEmail(ctx context.Context, cfg config, briefingEmail br
 		Region: cfg.AWSSESRegion,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	messageID, err := sender.SendHTML(ctx, briefingEmail.Subject, string(htmlBody))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	slog.Info("Sent briefing email", "message_id", messageID, "recipient_count", len(nonEmptyStrings(cfg.EmailTo)))
-	return nil
+	return messageID, nil
+}
+
+func resultForBriefing(cfg config, briefingEmail briefing.BriefingEmail, renderedEmailPath string, messageID string) Result {
+	return Result{
+		Status:            "ok",
+		Subject:           briefingEmail.Subject,
+		RenderedEmailPath: renderedEmailPath,
+		EmailSent:         cfg.SendEmail,
+		MessageID:         messageID,
+	}
 }
 
 func nonEmptyStrings(values []string) []string {
@@ -288,13 +317,25 @@ func buildMarketHistoryInputs(history []ingest.MarketHistoryPoint) []briefing.Ma
 	return points
 }
 
-func renderBriefingEmailHTML(briefingEmail briefing.BriefingEmail) (string, error) {
+func renderBriefingEmailHTML(briefingEmail briefing.BriefingEmail, cacheDir string) (string, error) {
 	return renderBriefingEmailHTMLWithBytes(
 		briefingEmail,
 		filepath.Base(emailTemplatePath),
-		renderedEmailFilePath,
-		embeddedEmailTemplate,
+		renderedEmailFilePath(cacheDir),
+		emailtemplate.HTML,
 	)
+}
+
+func renderedEmailFilePath(cacheDir string) string {
+	return filepath.Join(normalizedCacheDir(cacheDir), renderedEmailFileName)
+}
+
+func normalizedCacheDir(cacheDir string) string {
+	cacheDir = strings.TrimSpace(cacheDir)
+	if cacheDir == "" {
+		return "cache"
+	}
+	return cacheDir
 }
 
 func renderBriefingEmailHTMLWithPaths(briefingEmail briefing.BriefingEmail, templatePath string, outputPath string) (string, error) {
@@ -390,7 +431,7 @@ func optionalIntValue(value *int) int {
 	return *value
 }
 
-func configureLogger(cfg config) {
+func configureLogger(cfg config) error {
 	var logLevel slog.Level
 	switch strings.ToLower(strings.TrimSpace(cfg.LogLevel)) {
 	case "debug":
@@ -402,7 +443,7 @@ func configureLogger(cfg config) {
 	case "error":
 		logLevel = slog.LevelError
 	default:
-		panic(fmt.Errorf("invalid log level %q: expected debug, info, warn, or error", cfg.LogLevel))
+		return fmt.Errorf("invalid log level %q: expected debug, info, warn, or error", cfg.LogLevel)
 	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
@@ -410,6 +451,7 @@ func configureLogger(cfg config) {
 		ReplaceAttr: maskSensitiveLogAttr,
 	}))
 	slog.SetDefault(logger)
+	return nil
 }
 
 func maskSensitiveLogAttr(_ []string, attr slog.Attr) slog.Attr {

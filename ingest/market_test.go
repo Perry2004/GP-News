@@ -164,6 +164,19 @@ func TestLoadDataJSONLoadsOlderMarketValueCacheWithoutHistory(t *testing.T) {
 	}
 }
 
+func TestCacheFilePathUsesConfiguredCacheDir(t *testing.T) {
+	path := cacheFilePath("/tmp/gpnews-cache", marketValuesFileName)
+	want := filepath.Join("/tmp/gpnews-cache", "market_values.json")
+	if path != want {
+		t.Fatalf("cache file path = %q, want %q", path, want)
+	}
+
+	defaultPath := cacheFilePath("", newsDataFileName)
+	if defaultPath != filepath.Join("cache", "news_data.json") {
+		t.Fatalf("default cache file path = %q, want cache/news_data.json", defaultPath)
+	}
+}
+
 func TestParseYahooChartResponseErrors(t *testing.T) {
 	tests := []struct {
 		name        string

@@ -1,7 +1,9 @@
-package main
+package app
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"os"
@@ -61,6 +63,19 @@ func TestConfigParsesEmailToList(t *testing.T) {
 	}
 	if cfg.SendEmail {
 		t.Fatal("SendEmail defaulted to true")
+	}
+}
+
+func TestConfigParsesCacheDir(t *testing.T) {
+	t.Setenv("CACHE_DIR", "/tmp/gpnews-cache")
+
+	cfg, err := env.ParseAs[config]()
+	if err != nil {
+		t.Fatalf("ParseAs() error = %v", err)
+	}
+
+	if cfg.CacheDir != "/tmp/gpnews-cache" {
+		t.Fatalf("CacheDir = %q, want /tmp/gpnews-cache", cfg.CacheDir)
 	}
 }
 
@@ -261,6 +276,47 @@ func TestRenderBriefingEmailHTMLWithPathsWritesCacheFile(t *testing.T) {
 	}
 	if !strings.Contains(string(rendered), "Rates and oil drive critical briefing 1") {
 		t.Fatalf("unexpected rendered output: %s", rendered)
+	}
+}
+
+func TestRenderedEmailFilePathUsesCacheDir(t *testing.T) {
+	path := renderedEmailFilePath("/tmp/gpnews-cache")
+	want := filepath.Join("/tmp/gpnews-cache", "briefing_email.html")
+	if path != want {
+		t.Fatalf("rendered email path = %q, want %q", path, want)
+	}
+
+	defaultPath := renderedEmailFilePath("")
+	if defaultPath != filepath.Join("cache", "briefing_email.html") {
+		t.Fatalf("default rendered email path = %q, want cache/briefing_email.html", defaultPath)
+	}
+}
+
+func TestHandleLambdaDelegatesToRun(t *testing.T) {
+	original := runForLambda
+	t.Cleanup(func() {
+		runForLambda = original
+	})
+
+	called := false
+	runForLambda = func(ctx context.Context) (Result, error) {
+		called = true
+		return Result{
+			Status:            "ok",
+			Subject:           "GP News",
+			RenderedEmailPath: "cache/briefing_email.html",
+		}, nil
+	}
+
+	result, err := HandleLambda(context.Background(), json.RawMessage(`{}`))
+	if err != nil {
+		t.Fatalf("HandleLambda() error = %v", err)
+	}
+	if !called {
+		t.Fatal("HandleLambda() did not call runForLambda")
+	}
+	if result.Subject != "GP News" {
+		t.Fatalf("Subject = %q, want GP News", result.Subject)
 	}
 }
 
