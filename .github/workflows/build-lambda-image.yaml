@@ -33,45 +33,103 @@ jobs:
           ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_LAMBDA }}
           AWS_S3_BUCKET_NAME: ${{ vars.AWS_S3_BUCKET }}
         run: |
-          # Build the Docker image from the 'scripts' directory.
-          # This assumes your Dockerfile is located in 'scripts/Dockerfile'.
-          docker buildx build --platform linux/amd64 --provenance=false -f ./Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          set -euo pipefail
 
-          # Push the built image to ECR
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          IMAGE_TAG="${GITHUB_SHA}"
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-          # Output the full image URI for use in subsequent steps
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_OUTPUT
+          docker buildx build --platform linux/amd64 --provenance=false -f ./Dockerfile -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
 
-      - name: "Trigger Terraform Cloud Run"
+          {
+            echo "image_tag=$IMAGE_TAG"
+            echo "image_uri=$IMAGE_URI"
+            echo "image=$IMAGE_URI"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update Terraform Cloud Lambda image variable
+        env:
+          IMAGE_URI: ${{ steps.build-image.outputs.image_uri }}
+          TFC_API_TOKEN: ${{ secrets.TFC_API_TOKEN }}
+          VARIABLE_KEY: lambda_image_uri
+          WORKSPACE_ID: ${{ vars.TFC_WORKSPACE_ID_GP_NEWS_LAMBDA }}
         run: |
+          set -euo pipefail
+
+          VARS_URL="https://app.terraform.io/api/v2/workspaces/$WORKSPACE_ID/vars"
+          vars_response="$(mktemp)"
+
+          curl --fail-with-body --silent --show-error \
+            --header "Authorization: Bearer $TFC_API_TOKEN" \
+            --header "Content-Type: application/vnd.api+json" \
+            "$VARS_URL" \
+            --output "$vars_response"
+
+          variable_id="$(
+            jq -r --arg key "$VARIABLE_KEY" \
+              '.data[] | select(.attributes.key == $key and .attributes.category == "terraform") | .id' \
+              "$vars_response" | head -n 1
+          )"
+
+          if [ -n "$variable_id" ]; then
+            jq -n \
+              --arg id "$variable_id" \
+              --arg value "$IMAGE_URI" \
+              '{data:{id:$id,type:"vars",attributes:{value:$value}}}' > payload.json
+
+            curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer $TFC_API_TOKEN" \
+              --header "Content-Type: application/vnd.api+json" \
+              --request PATCH \
+              --data @payload.json \
+              "$VARS_URL/$variable_id"
+          else
+            jq -n \
+              --arg key "$VARIABLE_KEY" \
+              --arg value "$IMAGE_URI" \
+              '{data:{type:"vars",attributes:{key:$key,value:$value,category:"terraform",hcl:false,sensitive:false}}}' > payload.json
+
+            curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer $TFC_API_TOKEN" \
+              --header "Content-Type: application/vnd.api+json" \
+              --request POST \
+              --data @payload.json \
+              "$VARS_URL"
+          fi
+
+      - name: Trigger Terraform Cloud Run
+        run: |
+          set -euo pipefail
+
           WORKSPACE_ID="${{ vars.TFC_WORKSPACE_ID_GP_NEWS_LAMBDA }}"
 
-          cat > payload.json <<EOF
-          {
-            "data": {
-              "attributes": {
-                "message": "Run triggered from GP-News lambda update by commit ${{ github.sha }}"
-              },
-              "type": "runs",
-              "relationships": {
-                "workspace": {
-                  "data": {
-                    "type": "workspaces",
-                    "id": "$WORKSPACE_ID"
+          jq -n \
+            --arg message "Run triggered from GP-News lambda update by commit $GITHUB_SHA using image $IMAGE_URI" \
+            --arg workspace_id "$WORKSPACE_ID" \
+            '{
+              data: {
+                attributes: {
+                  message: $message
+                },
+                type: "runs",
+                relationships: {
+                  workspace: {
+                    data: {
+                      type: "workspaces",
+                      id: $workspace_id
+                    }
                   }
                 }
               }
-            }
-          }
-          EOF
+            }' > payload.json
 
-          curl --fail \
-            --header "Authorization: Bearer ${{ secrets.TFC_API_TOKEN }}" \
+          curl --fail-with-body --silent --show-error \
+            --header "Authorization: Bearer $TFC_API_TOKEN" \
             --header "Content-Type: application/vnd.api+json" \
             --request POST \
             --data @payload.json \
             https://app.terraform.io/api/v2/runs
         env:
-          TF_API_TOKEN: ${{ secrets.TFC_API_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
+          IMAGE_URI: ${{ steps.build-image.outputs.image_uri }}
+          TFC_API_TOKEN: ${{ secrets.TFC_API_TOKEN }}
