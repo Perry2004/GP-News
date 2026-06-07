@@ -1,0 +1,28 @@
+minimum_pre_commit_version: "3.0.0"
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+    - id: trailing-whitespace
+    - id: end-of-file-fixer
+    - id: check-yaml
+    - id: check-added-large-files
+    - id: check-merge-conflict
+    - id: mixed-line-ending
+      args: ["--fix=lf"]
+
+- repo: local
+  hooks:
+    - id: golangci-lint
+      name: golangci-lint
+      entry: make lint
+      language: system
+      pass_filenames: false
+      files: '(\.go$|^go\.(mod|sum)$|^Makefile$|^\.golangci\.ya?ml$)'
+    - id: make-email-template-check
+      name: make email-template-check
+      entry: make email-template-check
+      language: system
+      pass_filenames: false
+      files: '^email/template/.*\.(tsx|ts|json|ya?ml)$|^email/template/pnpm-lock\.yaml$|^Makefile$'

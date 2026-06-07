@@ -1,0 +1,8 @@
+.env
+.git
+.DS_Store
+bin/
+cache/
+coverage.out
+email/template/out/
+email/template/node_modules/
