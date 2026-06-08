@@ -61,8 +61,8 @@ func TestConfigParsesEmailToList(t *testing.T) {
 	if len(cfg.EmailTo) != 2 || cfg.EmailTo[0] != "reader@example.com" || cfg.EmailTo[1] != "desk@example.com" {
 		t.Fatalf("EmailTo = %#v, want [reader@example.com desk@example.com]", cfg.EmailTo)
 	}
-	if cfg.SendEmail {
-		t.Fatal("SendEmail defaulted to true")
+	if !cfg.SendEmail {
+		t.Fatal("SendEmail not defaulted to true")
 	}
 }
 

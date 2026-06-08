@@ -28,7 +28,7 @@ type config struct {
 	LogLevel               string   `env:"LOG_LEVEL" envDefault:"info"` // debug, info, warn, error
 	NewsDataAPIKey         string   `env:"NEWS_DATA_API_KEY"`
 	EnableFetching         bool     `env:"ENABLE_FETCHING" envDefault:"true"`
-	PersistData            bool     `env:"PERSIST_DATA" envDefault:"true"`
+	PersistData            bool     `env:"PERSIST_DATA" envDefault:"false"`
 	Model                  string   `env:"MODEL"`
 	BaseURL                string   `env:"BASE_URL" envDefault:"https://api.openai.com/v1"`
 	LLMAPIKey              string   `env:"LLM_API_KEY"`
@@ -36,7 +36,7 @@ type config struct {
 	LLMTemperature         float64  `env:"LLM_TEMPERATURE" envDefault:"0"`
 	LLMThinkingLevel       string   `env:"LLM_THINKING_LEVEL" envDefault:"medium"`
 	LLMProviderIgnore      []string `env:"LLM_PROVIDER_IGNORE" envSeparator:","`
-	SendEmail              bool     `env:"SEND_EMAIL" envDefault:"false"`
+	SendEmail              bool     `env:"SEND_EMAIL" envDefault:"true"`
 	EmailFrom              string   `env:"EMAIL_FROM"`
 	EmailTo                []string `env:"EMAIL_TO" envSeparator:","`
 	AWSSESRegion           string   `env:"AWS_SES_REGION"`
