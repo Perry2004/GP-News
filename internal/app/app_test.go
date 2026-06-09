@@ -2,8 +2,6 @@ package app
 
 import (
 	"bytes"
-	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"os"
@@ -24,7 +22,7 @@ func TestMaskConfigForLogging(t *testing.T) {
 		NewsDataAPIKey: "secret-news-data-key",
 	}
 
-	masked := maskConfigForLogging(cfg)
+	masked := maskedConfig(cfg)
 
 	if masked.LogLevel != cfg.LogLevel {
 		t.Fatalf("LogLevel = %q, want %q", masked.LogLevel, cfg.LogLevel)
@@ -289,34 +287,6 @@ func TestRenderedEmailFilePathUsesCacheDir(t *testing.T) {
 	defaultPath := renderedEmailFilePath("")
 	if defaultPath != filepath.Join("cache", "briefing_email.html") {
 		t.Fatalf("default rendered email path = %q, want cache/briefing_email.html", defaultPath)
-	}
-}
-
-func TestHandleLambdaDelegatesToRun(t *testing.T) {
-	original := runForLambda
-	t.Cleanup(func() {
-		runForLambda = original
-	})
-
-	called := false
-	runForLambda = func(ctx context.Context) (Result, error) {
-		called = true
-		return Result{
-			Status:            "ok",
-			Subject:           "GP News",
-			RenderedEmailPath: "cache/briefing_email.html",
-		}, nil
-	}
-
-	result, err := HandleLambda(context.Background(), json.RawMessage(`{}`))
-	if err != nil {
-		t.Fatalf("HandleLambda() error = %v", err)
-	}
-	if !called {
-		t.Fatal("HandleLambda() did not call runForLambda")
-	}
-	if result.Subject != "GP News" {
-		t.Fatalf("Subject = %q, want GP News", result.Subject)
 	}
 }
 

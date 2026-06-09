@@ -1,11 +1,16 @@
 package main
 
 import (
-	"github.com/Perry2004/GP-News/internal/app"
+	"context"
+	"encoding/json"
 
 	"github.com/aws/aws-lambda-go/lambda"
+
+	"github.com/Perry2004/GP-News/internal/app"
 )
 
 func main() {
-	lambda.Start(app.HandleLambda)
+	lambda.Start(func(ctx context.Context, event json.RawMessage) (app.Result, error) {
+		return app.Run(ctx)
+	})
 }

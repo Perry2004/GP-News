@@ -9,8 +9,10 @@ import (
 )
 
 func main() {
-	if _, err := app.Run(context.Background()); err != nil {
+	res, err := app.Run(context.Background())
+	if err != nil {
 		slog.Error("GP-News failed", "error", err)
 		os.Exit(1)
 	}
+	slog.Info("GP-News completed", "result", res)
 }

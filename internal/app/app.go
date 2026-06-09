@@ -15,13 +15,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
+
 	"github.com/Perry2004/GP-News/briefing"
 	"github.com/Perry2004/GP-News/email"
 	emailtemplate "github.com/Perry2004/GP-News/email/template"
 	"github.com/Perry2004/GP-News/ingest"
-
-	"github.com/caarlos0/env/v11"
-	"github.com/joho/godotenv"
 )
 
 type config struct {
@@ -49,18 +49,9 @@ const (
 )
 
 type Result struct {
-	Status            string `json:"status"`
-	Subject           string `json:"subject,omitempty"`
-	RenderedEmailPath string `json:"rendered_email_path,omitempty"`
-	EmailSent         bool   `json:"email_sent"`
-	MessageID         string `json:"message_id,omitempty"`
-}
-
-var runForLambda = Run
-
-func HandleLambda(ctx context.Context, event json.RawMessage) (Result, error) {
-	_ = event
-	return runForLambda(ctx)
+	Subject   string `json:"subject,omitempty"`
+	EmailSent bool   `json:"email_sent"`
+	MessageID string `json:"message_id,omitempty"`
 }
 
 func Run(ctx context.Context) (Result, error) {
@@ -80,7 +71,7 @@ func Run(ctx context.Context) (Result, error) {
 		return Result{}, err
 	}
 
-	slog.Debug("GP-News configuration loaded", "environment", envName, "config", maskConfigForLogging(cfg))
+	slog.Debug("GP-News configuration loaded", "environment", envName, "config", maskedConfig(cfg))
 	slog.Info("Starting GP-News")
 
 	if !cfg.EnableFetching {
@@ -98,7 +89,7 @@ func Run(ctx context.Context) (Result, error) {
 		if err != nil {
 			return Result{}, fmt.Errorf("failed to send cached briefing email: %w", err)
 		}
-		return resultForBriefing(cfg, briefingEmail, renderedEmailPath, messageID), nil
+		return resultForBriefing(cfg, briefingEmail, messageID), nil
 	}
 
 	marketValues, categoryBuckets, regionBuckets, err := ingest.RetrieveData(ctx, ingest.Config{
@@ -154,13 +145,13 @@ func Run(ctx context.Context) (Result, error) {
 		return Result{}, fmt.Errorf("failed to send briefing email: %w", err)
 	}
 
-	return resultForBriefing(cfg, briefingEmail, renderedEmailPath, messageID), nil
+	return resultForBriefing(cfg, briefingEmail, messageID), nil
 }
 
 func loadEnv() (string, error) {
 	envName := os.Getenv("ENVIRONMENT")
 	switch strings.ToLower(strings.TrimSpace(envName)) {
-	case "", "dev":
+	case "", "dev": // Default to dev env
 		if err := godotenv.Load(); err != nil {
 			return "", fmt.Errorf("failed to load .env file: %w", err)
 		}
@@ -217,13 +208,11 @@ func sendRenderedBriefingEmail(ctx context.Context, cfg config, briefingEmail br
 	return messageID, nil
 }
 
-func resultForBriefing(cfg config, briefingEmail briefing.BriefingEmail, renderedEmailPath string, messageID string) Result {
+func resultForBriefing(cfg config, briefingEmail briefing.BriefingEmail, messageID string) Result {
 	return Result{
-		Status:            "ok",
-		Subject:           briefingEmail.Subject,
-		RenderedEmailPath: renderedEmailPath,
-		EmailSent:         cfg.SendEmail,
-		MessageID:         messageID,
+		Subject:   briefingEmail.Subject,
+		EmailSent: cfg.SendEmail,
+		MessageID: messageID,
 	}
 }
 
@@ -523,7 +512,8 @@ func isSensitiveQueryKey(key string) bool {
 	}
 }
 
-func maskConfigForLogging(cfg config) config {
+// Returns a string of the current config with sensitive fields masked for logging.
+func maskedConfig(cfg config) config {
 	masked := cfg
 	cfgValue := reflect.ValueOf(&masked).Elem()
 	cfgType := cfgValue.Type()
