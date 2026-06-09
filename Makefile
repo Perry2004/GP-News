@@ -36,7 +36,7 @@ clean:
 format: go-format email-template-format
 
 go-format:
-	go fmt ./...
+	goimports -local github.com/Perry2004/GP-News -w .
 
 lint:
 	$(GOLANGCI_LINT) run ./...
