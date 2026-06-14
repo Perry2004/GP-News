@@ -9,16 +9,23 @@ import (
 
 	"github.com/Perry2004/GP-News/briefing"
 	"github.com/Perry2004/GP-News/ingest"
+	"github.com/Perry2004/GP-News/internal/history"
 )
 
-func generateBriefingEmail(ctx context.Context, cfg config, freshFrom FreshFrom) (briefing.BriefingEmail, error) {
+type generatedBriefing struct {
+	Email       briefing.BriefingEmail
+	FinalInput  briefing.BriefingInput
+	SourceInput briefing.BriefingAgentInput
+}
+
+func generateBriefing(ctx context.Context, cfg config, freshFrom FreshFrom) (generatedBriefing, error) {
 	if freshFrom == FreshFromCached {
 		slog.Info("Loading cached final briefing", "cache_dir", cfg.CacheDir)
 		briefingEmail, err := briefing.LoadCachedBriefingEmail(cfg.CacheDir)
 		if err != nil {
-			return briefing.BriefingEmail{}, fmt.Errorf("failed to load cached final briefing: %w", err)
+			return generatedBriefing{}, fmt.Errorf("failed to load cached final briefing: %w", err)
 		}
-		return briefingEmail, nil
+		return generatedBriefing{Email: briefingEmail}, nil
 	}
 
 	llm, err := briefing.NewLLMGenerator(briefing.Config{
@@ -33,41 +40,116 @@ func generateBriefingEmail(ctx context.Context, cfg config, freshFrom FreshFrom)
 		CacheDir:            cfg.CacheDir,
 	})
 	if err != nil {
-		return briefing.BriefingEmail{}, fmt.Errorf("failed to create LLM generator: %w", err)
+		return generatedBriefing{}, fmt.Errorf("failed to create LLM generator: %w", err)
 	}
 
 	var input briefing.BriefingAgentInput // input is only needed when new input to the final generation is changed.
 	if freshFromNeedsRawData(freshFrom) {
 		input, err = buildBriefingAgentInput(ctx, cfg, freshFrom)
 		if err != nil {
-			return briefing.BriefingEmail{}, err
+			return generatedBriefing{}, err
 		}
+		input = applyBriefingHistoryDedupe(ctx, cfg, freshFrom, llm, input)
 	}
 
-	var briefingEmail briefing.BriefingEmail
+	var result briefing.GenerationResult
 	switch freshFrom {
 	case FreshFromFetching, FreshFromSummarization:
-		briefingEmail, err = llm.GenerateBriefing(ctx, input)
+		result, err = llm.GenerateBriefingResult(ctx, input)
 	case FreshFromReview:
 		processed, loadErr := briefing.LoadCachedProcessedNews(cfg.CacheDir)
 		if loadErr != nil {
-			return briefing.BriefingEmail{}, fmt.Errorf("failed to load cached processed news: %w", loadErr)
+			return generatedBriefing{}, fmt.Errorf("failed to load cached processed news: %w", loadErr)
 		}
-		briefingEmail, err = llm.GenerateBriefingFromProcessedNews(ctx, input, processed)
+		result, err = llm.GenerateBriefingFromProcessedNewsResult(ctx, input, processed)
 	case FreshFromBriefing:
 		finalInput, loadErr := briefing.LoadCachedFinalBriefingInput(cfg.CacheDir)
 		if loadErr != nil {
-			return briefing.BriefingEmail{}, fmt.Errorf("failed to load cached final briefing input: %w", loadErr)
+			return generatedBriefing{}, fmt.Errorf("failed to load cached final briefing input: %w", loadErr)
 		}
-		briefingEmail, err = llm.GenerateFinalBriefing(ctx, finalInput)
+		email, generateErr := llm.GenerateFinalBriefing(ctx, finalInput)
+		err = generateErr
+		result = briefing.GenerationResult{Email: email, FinalInput: finalInput}
 	default:
-		return briefing.BriefingEmail{}, fmt.Errorf("invalid FRESH_FROM %q", cfg.FreshFrom)
+		return generatedBriefing{}, fmt.Errorf("invalid FRESH_FROM %q", cfg.FreshFrom)
 	}
 	if err != nil {
-		return briefing.BriefingEmail{}, fmt.Errorf("failed to generate briefing: %w", err)
+		return generatedBriefing{}, fmt.Errorf("failed to generate briefing: %w", err)
 	}
-	slog.Info("Generated briefing", "output", briefingEmail)
-	return briefingEmail, nil
+	slog.Info("Generated briefing", "output", result.Email)
+	return generatedBriefing{Email: result.Email, FinalInput: result.FinalInput, SourceInput: input}, nil
+}
+
+func applyBriefingHistoryDedupe(ctx context.Context, cfg config, freshFrom FreshFrom, llm *briefing.LLMGenerator, input briefing.BriefingAgentInput) briefing.BriefingAgentInput {
+	if !briefingHistoryEnabled(cfg, freshFrom) {
+		return input
+	}
+
+	store, err := history.NewDynamoDBStore(ctx, cfg.BriefingHistoryTable)
+	if err != nil {
+		slog.Warn("Briefing history dedupe disabled after store setup failure", "error", err)
+		return input
+	}
+	since := time.Now().AddDate(0, 0, -cfg.BriefingHistoryLookbackDays)
+	records, err := store.RecentSelectedNews(ctx, since)
+	if err != nil {
+		slog.Warn("Briefing history dedupe skipped after DynamoDB query failure", "error", err)
+		return input
+	}
+	if len(records) == 0 {
+		slog.Info("Briefing history dedupe skipped; no recent selected news found")
+		return input
+	}
+
+	result, err := llm.FilterBriefingHistoryDuplicates(ctx, input, history.DedupeRecentNews(records))
+	if err != nil {
+		slog.Warn("Briefing history dedupe skipped after LLM failure", "error", err)
+		return input
+	}
+	if len(result.DuplicateArticleIDs) > 0 {
+		slog.Info("Briefing history dedupe removed duplicate articles",
+			"duplicate_article_ids", result.DuplicateArticleIDs,
+			"original_article_count", len(input.Articles),
+			"filtered_article_count", len(result.Input.Articles),
+		)
+	}
+	return result.Input
+}
+
+func persistSelectedBriefingHistory(ctx context.Context, cfg config, freshFrom FreshFrom, generated generatedBriefing) {
+	if !briefingHistoryEnabled(cfg, freshFrom) {
+		return
+	}
+	if len(generated.FinalInput.ReviewedNews) == 0 {
+		slog.Info("Briefing history write skipped; no reviewed news selected")
+		return
+	}
+
+	store, err := history.NewDynamoDBStore(ctx, cfg.BriefingHistoryTable)
+	if err != nil {
+		slog.Warn("Briefing history write skipped after store setup failure", "error", err)
+		return
+	}
+	now := time.Now()
+	runID := now.UTC().Format("20060102T150405Z")
+	records := history.BuildSelectedNewsRecords(generated.FinalInput, generated.SourceInput.Articles, runID, now, cfg.BriefingHistoryTTLDays)
+	if err := store.PutSelectedNews(ctx, records); err != nil {
+		slog.Warn("Briefing history write failed", "error", err, "record_count", len(records))
+		return
+	}
+	slog.Info("Briefing history written", "record_count", len(records), "table", cfg.BriefingHistoryTable)
+}
+
+func briefingHistoryEnabled(cfg config, freshFrom FreshFrom) bool {
+	if strings.TrimSpace(cfg.BriefingHistoryTable) == "" {
+		return false
+	}
+	switch freshFrom {
+	case FreshFromFetching, FreshFromSummarization:
+		return true
+	default:
+		return false
+	}
 }
 
 func buildBriefingAgentInput(ctx context.Context, cfg config, freshFrom FreshFrom) (briefing.BriefingAgentInput, error) {
