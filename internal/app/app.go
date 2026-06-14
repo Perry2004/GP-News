@@ -43,10 +43,11 @@ func Run(ctx context.Context) (Result, error) {
 		return Result{}, err
 	}
 
-	briefingEmail, err := generateBriefingEmail(ctx, cfg, freshFrom)
+	generated, err := generateBriefing(ctx, cfg, freshFrom)
 	if err != nil {
 		return Result{}, err
 	}
+	briefingEmail := generated.Email
 
 	renderedEmailPath, err := email.RenderBriefingHTML(briefingEmail, cfg.CacheDir)
 	if err != nil {
@@ -67,6 +68,8 @@ func Run(ctx context.Context) (Result, error) {
 	} else {
 		slog.Info("Email sending disabled", "enable_email_sending", cfg.EnableEmailSending)
 	}
+
+	persistSelectedBriefingHistory(ctx, cfg, freshFrom, generated)
 
 	return resultForBriefing(cfg, briefingEmail, messageID), nil
 }

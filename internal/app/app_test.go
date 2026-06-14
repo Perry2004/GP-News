@@ -106,6 +106,25 @@ func TestConfigParsesCacheDir(t *testing.T) {
 	}
 }
 
+func TestConfigParsesBriefingHistoryDefaults(t *testing.T) {
+	t.Setenv("BRIEFING_HISTORY_TABLE", "gp-news-usw2dev-briefing-history")
+
+	cfg, err := env.ParseAs[config]()
+	if err != nil {
+		t.Fatalf("ParseAs() error = %v", err)
+	}
+
+	if cfg.BriefingHistoryTable != "gp-news-usw2dev-briefing-history" {
+		t.Fatalf("BriefingHistoryTable = %q", cfg.BriefingHistoryTable)
+	}
+	if cfg.BriefingHistoryLookbackDays != 7 {
+		t.Fatalf("BriefingHistoryLookbackDays = %d, want 7", cfg.BriefingHistoryLookbackDays)
+	}
+	if cfg.BriefingHistoryTTLDays != 14 {
+		t.Fatalf("BriefingHistoryTTLDays = %d, want 14", cfg.BriefingHistoryTTLDays)
+	}
+}
+
 func TestValidateConfigRequiresEmailFieldsOnlyWhenSending(t *testing.T) {
 	if err := validateConfig(config{FreshFrom: "cached", EnableEmailSending: false}); err != nil {
 		t.Fatalf("validateConfig() with ENABLE_EMAIL_SENDING=false error = %v", err)
@@ -159,6 +178,66 @@ func TestValidateConfigAcceptsEmailSendingConfig(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("validateConfig() error = %v", err)
+	}
+}
+
+func TestValidateConfigRequiresPositiveBriefingHistoryDurations(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  config
+		want string
+	}{
+		{
+			name: "lookback",
+			cfg:  config{FreshFrom: "cached", EnableEmailSending: false, BriefingHistoryTable: "history", BriefingHistoryLookbackDays: 0, BriefingHistoryTTLDays: 14},
+			want: "BRIEFING_HISTORY_LOOKBACK_DAYS",
+		},
+		{
+			name: "ttl",
+			cfg:  config{FreshFrom: "cached", EnableEmailSending: false, BriefingHistoryTable: "history", BriefingHistoryLookbackDays: 7, BriefingHistoryTTLDays: 0},
+			want: "BRIEFING_HISTORY_TTL_DAYS",
+		},
+		{
+			name: "disabled",
+			cfg:  config{FreshFrom: "cached", EnableEmailSending: false, BriefingHistoryLookbackDays: 0, BriefingHistoryTTLDays: 0},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateConfig(tt.cfg)
+			if tt.want == "" {
+				if err != nil {
+					t.Fatalf("validateConfig() error = %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("validateConfig() returned nil error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want %q", err.Error(), tt.want)
+			}
+		})
+	}
+}
+
+func TestBriefingHistoryEnabledOnlyForFreshRawModes(t *testing.T) {
+	cfg := config{BriefingHistoryTable: "history"}
+	if !briefingHistoryEnabled(cfg, FreshFromFetching) {
+		t.Fatal("history should be enabled for fetching")
+	}
+	if !briefingHistoryEnabled(cfg, FreshFromSummarization) {
+		t.Fatal("history should be enabled for summarization")
+	}
+	for _, freshFrom := range []FreshFrom{FreshFromReview, FreshFromBriefing, FreshFromCached} {
+		if briefingHistoryEnabled(cfg, freshFrom) {
+			t.Fatalf("history should be disabled for %s", freshFrom)
+		}
+	}
+	if briefingHistoryEnabled(config{}, FreshFromFetching) {
+		t.Fatal("history should be disabled without table")
 	}
 }
 

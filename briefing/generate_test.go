@@ -794,6 +794,181 @@ func TestGenerateBriefingPassesReviewedNewsAndReviewSummaryToFinalComposer(t *te
 	}
 }
 
+func TestFilterBriefingHistoryDuplicatesUsesStructuredSemanticOutput(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	var requestBodies []map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		if got := responseSchemaName(requestBody); got != "briefing_history_dedupe" {
+			t.Fatalf("response schema = %q, want briefing_history_dedupe", got)
+		}
+		userContent := messageContent(t, requestMessages(t, requestBody)[1])
+		mu.Lock()
+		requestBodies = append(requestBodies, requestBody)
+		mu.Unlock()
+		if strings.Contains(userContent, `"article_id":"a2"`) {
+			writeChatContent(t, w, `{
+				"duplicate":true,
+				"matches":[
+					{"history_entry_id":"DATE#2026-05-29#SESSION#Morning#RUN#r1#ARTICLE#h1","confidence":"High","reason":"Same underlying policy announcement."}
+				]
+			}`)
+			return
+		}
+		writeChatContent(t, w, `{"duplicate":false,"matches":[]}`)
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	input := BriefingAgentInput{
+		BriefingDate: "2026-05-30",
+		Session:      "Morning",
+		Articles: []ArticleInput{
+			{ID: "a1", BucketID: "markets", BucketName: "Markets", Title: "Fresh rates move", Link: "https://example.test/a1", ExtractedContent: "Fresh rates content."},
+			{ID: "a2", BucketID: "policy", BucketName: "Policy", Title: "Policy announcement repeated", Link: "https://example.test/a2", ExtractedContent: strings.Repeat("same policy ", 300)},
+			{ID: "bad", BucketID: "bad", BucketName: "Bad", Title: "Bad article", Link: "https://example.test/bad", ExtractionError: "fetch failed"},
+		},
+	}
+	recent := []BriefingHistoryDedupeRecentNews{
+		{
+			HistoryEntryID:    "DATE#2026-05-29#SESSION#Morning#RUN#r1#ARTICLE#h1",
+			BriefingDate:      "2026-05-29",
+			Session:           "Morning",
+			ProcessedHeadline: "Prior selected policy action",
+			Summary:           "Prior selected summary.",
+			ReviewNote:        "Selected yesterday.",
+		},
+	}
+
+	result, err := g.FilterBriefingHistoryDuplicates(t.Context(), input, recent)
+	if err != nil {
+		t.Fatalf("FilterBriefingHistoryDuplicates() error = %v", err)
+	}
+	if len(result.Input.Articles) != 2 || result.Input.Articles[0].ID != "a1" || result.Input.Articles[1].ID != "bad" {
+		t.Fatalf("filtered articles = %#v, want a1 and bad only", result.Input.Articles)
+	}
+	if len(result.DuplicateArticleIDs) != 1 || result.DuplicateArticleIDs[0] != "a2" {
+		t.Fatalf("duplicate ids = %#v, want [a2]", result.DuplicateArticleIDs)
+	}
+	if len(result.Outputs) != 2 {
+		t.Fatalf("output count = %d, want 2", len(result.Outputs))
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(requestBodies) != 2 {
+		t.Fatalf("request count = %d, want 2", len(requestBodies))
+	}
+	seenA1 := false
+	seenA2 := false
+	for _, body := range requestBodies {
+		userContent := messageContent(t, requestMessages(t, body)[1])
+		if !strings.Contains(userContent, `"current_article"`) || strings.Contains(userContent, `"current_articles"`) {
+			t.Fatalf("dedupe prompt should use singular current_article:\n%s", userContent)
+		}
+		if !strings.Contains(userContent, "Prior selected summary.") {
+			t.Fatalf("dedupe prompt missing recent history:\n%s", userContent)
+		}
+		if strings.Contains(userContent, "Bad article") {
+			t.Fatalf("errored article leaked into dedupe prompt:\n%s", userContent)
+		}
+		if strings.Contains(userContent, "Fresh rates move") {
+			seenA1 = true
+			if strings.Contains(userContent, "Policy announcement repeated") {
+				t.Fatalf("a1 dedupe prompt contains another current article:\n%s", userContent)
+			}
+		}
+		if strings.Contains(userContent, "Policy announcement repeated") {
+			seenA2 = true
+			if strings.Contains(userContent, "Fresh rates move") {
+				t.Fatalf("a2 dedupe prompt contains another current article:\n%s", userContent)
+			}
+		}
+		if strings.Count(userContent, "same policy") > 160 {
+			t.Fatalf("dedupe prompt appears to include too much article content")
+		}
+	}
+	if !seenA1 || !seenA2 {
+		t.Fatalf("seenA1=%v seenA2=%v, want both true", seenA1, seenA2)
+	}
+}
+
+func TestFilterBriefingHistoryDuplicatesKeepsArticleAfterSingleDedupeFailure(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	a1Attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		if got := responseSchemaName(requestBody); got != "briefing_history_dedupe" {
+			t.Fatalf("response schema = %q, want briefing_history_dedupe", got)
+		}
+		userContent := messageContent(t, requestMessages(t, requestBody)[1])
+		if strings.Contains(userContent, `"article_id":"a1"`) {
+			mu.Lock()
+			a1Attempts++
+			mu.Unlock()
+			writeChatContent(t, w, `{`)
+			return
+		}
+		writeChatContent(t, w, `{
+			"duplicate":true,
+			"matches":[
+				{"history_entry_id":"DATE#2026-05-29#SESSION#Morning#RUN#r1#ARTICLE#h1","confidence":"High","reason":"Same underlying policy announcement."}
+			]
+		}`)
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	result, err := g.FilterBriefingHistoryDuplicates(t.Context(), BriefingAgentInput{
+		BriefingDate: "2026-05-30",
+		Session:      "Morning",
+		Articles: []ArticleInput{
+			{ID: "a1", Title: "LLM failure article", Link: "https://example.test/a1", ExtractedContent: "A1 content."},
+			{ID: "a2", Title: "Duplicate article", Link: "https://example.test/a2", ExtractedContent: "A2 content."},
+		},
+	}, []BriefingHistoryDedupeRecentNews{
+		{
+			HistoryEntryID:    "DATE#2026-05-29#SESSION#Morning#RUN#r1#ARTICLE#h1",
+			BriefingDate:      "2026-05-29",
+			Session:           "Morning",
+			ProcessedHeadline: "Duplicate article",
+			Summary:           "Prior selected summary.",
+		},
+	})
+	if err != nil {
+		t.Fatalf("FilterBriefingHistoryDuplicates() error = %v", err)
+	}
+	if len(result.Input.Articles) != 1 || result.Input.Articles[0].ID != "a1" {
+		t.Fatalf("filtered articles = %#v, want only a1 kept", result.Input.Articles)
+	}
+	if len(result.DuplicateArticleIDs) != 1 || result.DuplicateArticleIDs[0] != "a2" {
+		t.Fatalf("duplicate ids = %#v, want [a2]", result.DuplicateArticleIDs)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if a1Attempts != maxStructuredDecodeAttempts {
+		t.Fatalf("a1 attempts = %d, want %d", a1Attempts, maxStructuredDecodeAttempts)
+	}
+}
+
 func TestGenerateBriefingFromProcessedNewsSkipsSingleNewsProcessing(t *testing.T) {
 	t.Parallel()
 
@@ -827,7 +1002,7 @@ func TestGenerateBriefingFromProcessedNewsSkipsSingleNewsProcessing(t *testing.T
 		t.Fatalf("New() error = %v", err)
 	}
 
-	output, err := g.GenerateBriefingFromProcessedNews(t.Context(), BriefingAgentInput{
+	result, err := g.GenerateBriefingFromProcessedNewsResult(t.Context(), BriefingAgentInput{
 		BriefingDate: "2026-05-30",
 		Session:      "Morning",
 		Articles: []ArticleInput{
@@ -846,10 +1021,13 @@ func TestGenerateBriefingFromProcessedNewsSkipsSingleNewsProcessing(t *testing.T
 		},
 	})
 	if err != nil {
-		t.Fatalf("GenerateBriefingFromProcessedNews() error = %v", err)
+		t.Fatalf("GenerateBriefingFromProcessedNewsResult() error = %v", err)
 	}
-	if output.Subject != "GP News" {
-		t.Fatalf("output subject = %q, want GP News", output.Subject)
+	if result.Email.Subject != "GP News" {
+		t.Fatalf("output subject = %q, want GP News", result.Email.Subject)
+	}
+	if len(result.FinalInput.ReviewedNews) != 1 || result.FinalInput.ReviewedNews[0].News.ArticleID != "a1" {
+		t.Fatalf("final input reviewed news = %#v, want a1", result.FinalInput.ReviewedNews)
 	}
 	if !reviewCalled || !finalCalled {
 		t.Fatalf("reviewCalled=%v finalCalled=%v, want both true", reviewCalled, finalCalled)

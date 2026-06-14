@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-const processNewsMaxConcurrentCalls = 20
+const processNewsMaxConcurrentCalls = 50
 
 type processNewsResult struct {
 	index int

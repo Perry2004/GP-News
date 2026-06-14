@@ -84,6 +84,14 @@ func NewLLMGenerator(cfg Config) (*LLMGenerator, error) {
 }
 
 func (g *LLMGenerator) GenerateBriefing(ctx context.Context, input BriefingAgentInput) (BriefingEmail, error) {
+	result, err := g.GenerateBriefingResult(ctx, input)
+	if err != nil {
+		return BriefingEmail{}, err
+	}
+	return result.Email, nil
+}
+
+func (g *LLMGenerator) GenerateBriefingResult(ctx context.Context, input BriefingAgentInput) (GenerationResult, error) {
 	validArticles := filterValidArticles(input.Articles)
 	slog.Info("Generating briefing through agent",
 		"briefing_date", input.BriefingDate,
@@ -95,13 +103,21 @@ func (g *LLMGenerator) GenerateBriefing(ctx context.Context, input BriefingAgent
 
 	processed, err := g.processNewsConcurrently(ctx, input.BriefingDate, validArticles)
 	if err != nil {
-		return BriefingEmail{}, err
+		return GenerationResult{}, err
 	}
 	g.persistCacheJSON(processedNewsCacheFileName, processed)
-	return g.GenerateBriefingFromProcessedNews(ctx, input, processed)
+	return g.GenerateBriefingFromProcessedNewsResult(ctx, input, processed)
 }
 
 func (g *LLMGenerator) GenerateBriefingFromProcessedNews(ctx context.Context, input BriefingAgentInput, processed []ProcessedNews) (BriefingEmail, error) {
+	result, err := g.GenerateBriefingFromProcessedNewsResult(ctx, input, processed)
+	if err != nil {
+		return BriefingEmail{}, err
+	}
+	return result.Email, nil
+}
+
+func (g *LLMGenerator) GenerateBriefingFromProcessedNewsResult(ctx context.Context, input BriefingAgentInput, processed []ProcessedNews) (GenerationResult, error) {
 	validArticles := filterValidArticles(input.Articles)
 	processedArticleIDs := processedNewsArticleIDSet(processed)
 	reviewArticles := filterArticlesByIDSet(validArticles, processedArticleIDs)
@@ -122,25 +138,25 @@ func (g *LLMGenerator) GenerateBriefingFromProcessedNews(ctx context.Context, in
 	}
 
 	if err := g.runReviewAgent(ctx, state); err != nil {
-		return BriefingEmail{}, err
+		return GenerationResult{}, err
 	}
 	slog.Info("Review agent completed",
 		"selected_count", state.selectedCount(),
 	)
 
-	briefing, err := g.generateFinalBriefing(ctx, state)
+	result, err := g.generateFinalBriefingResult(ctx, state)
 	if err != nil {
-		return BriefingEmail{}, err
+		return GenerationResult{}, err
 	}
 	slog.Info("Briefing composed",
 		"briefing_date", input.BriefingDate,
 		"session", input.Session,
 		"reviewed_news_count", state.selectedCount(),
-		"criticality_score", briefing.CriticalityScore,
-		"priority_level", briefing.PriorityLevel,
-		"high_priority_tag", briefing.HighPriorityTag,
+		"criticality_score", result.Email.CriticalityScore,
+		"priority_level", result.Email.PriorityLevel,
+		"high_priority_tag", result.Email.HighPriorityTag,
 	)
-	return briefing, nil
+	return result, nil
 }
 
 type structuredRequest[T any] struct {

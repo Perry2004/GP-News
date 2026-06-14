@@ -58,6 +58,11 @@ type BriefingInput struct {
 	ThemeClusters  []ThemeCluster `json:"theme_clusters"`
 }
 
+type GenerationResult struct {
+	Email      BriefingEmail `json:"email"`
+	FinalInput BriefingInput `json:"final_input"`
+}
+
 type BriefingEmail struct {
 	Subject                string          `json:"subject" jsonschema:"minLength=12,maxLength=120" jsonschema_description:"Generated email subject line for this specific briefing. Must be concise and mention the main market driver or criticality, not a generic desk name."`
 	CriticalityScore       float64         `json:"criticality_score" jsonschema:"minimum=0,maximum=10"`

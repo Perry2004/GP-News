@@ -9,22 +9,25 @@ import (
 )
 
 type config struct {
-	LogLevel               string   `env:"LOG_LEVEL" envDefault:"info"` // debug, info, warn, error
-	NewsDataAPIKey         string   `env:"NEWS_DATA_API_KEY"`
-	FreshFrom              string   `env:"FRESH_FROM" envDefault:"fetching"` // fetching, summarization, review, briefing, cached
-	PersistData            bool     `env:"PERSIST_DATA" envDefault:"false"`  // whether to store to cache json for debugging and auditing.
-	Model                  string   `env:"MODEL"`                            // LLM model name
-	BaseURL                string   `env:"BASE_URL" envDefault:"https://api.openai.com/v1"`
-	LLMAPIKey              string   `env:"LLM_API_KEY"`
-	LLMMaxCompletionTokens int64    `env:"LLM_MAX_COMPLETION_TOKENS" envDefault:"0"`
-	LLMTemperature         float64  `env:"LLM_TEMPERATURE" envDefault:"0"`
-	LLMThinkingLevel       string   `env:"LLM_THINKING_LEVEL" envDefault:"medium"`
-	LLMProviderIgnore      []string `env:"LLM_PROVIDER_IGNORE" envSeparator:","` // ignore open router providers
-	EnableEmailSending     bool     `env:"ENABLE_EMAIL_SENDING" envDefault:"true"`
-	EmailFrom              string   `env:"EMAIL_FROM"` // from email address
-	EmailTo                []string `env:"EMAIL_TO" envSeparator:","`
-	AWSSESRegion           string   `env:"AWS_SES_REGION"`
-	CacheDir               string   `env:"CACHE_DIR" envDefault:"cache"`
+	LogLevel                    string   `env:"LOG_LEVEL" envDefault:"info"` // debug, info, warn, error
+	NewsDataAPIKey              string   `env:"NEWS_DATA_API_KEY"`
+	FreshFrom                   string   `env:"FRESH_FROM" envDefault:"fetching"` // fetching, summarization, review, briefing, cached
+	PersistData                 bool     `env:"PERSIST_DATA" envDefault:"false"`  // whether to store to cache json for debugging and auditing.
+	Model                       string   `env:"MODEL"`                            // LLM model name
+	BaseURL                     string   `env:"BASE_URL" envDefault:"https://api.openai.com/v1"`
+	LLMAPIKey                   string   `env:"LLM_API_KEY"`
+	LLMMaxCompletionTokens      int64    `env:"LLM_MAX_COMPLETION_TOKENS" envDefault:"0"`
+	LLMTemperature              float64  `env:"LLM_TEMPERATURE" envDefault:"0"`
+	LLMThinkingLevel            string   `env:"LLM_THINKING_LEVEL" envDefault:"medium"`
+	LLMProviderIgnore           []string `env:"LLM_PROVIDER_IGNORE" envSeparator:","` // ignore open router providers
+	EnableEmailSending          bool     `env:"ENABLE_EMAIL_SENDING" envDefault:"true"`
+	EmailFrom                   string   `env:"EMAIL_FROM"` // from email address
+	EmailTo                     []string `env:"EMAIL_TO" envSeparator:","`
+	AWSSESRegion                string   `env:"AWS_SES_REGION"`
+	CacheDir                    string   `env:"CACHE_DIR" envDefault:"cache"`
+	BriefingHistoryTable        string   `env:"BRIEFING_HISTORY_TABLE"` // DynamoDB table name for briefing history. If empty, briefing history won't be stored.
+	BriefingHistoryLookbackDays int      `env:"BRIEFING_HISTORY_LOOKBACK_DAYS" envDefault:"7"`
+	BriefingHistoryTTLDays      int      `env:"BRIEFING_HISTORY_TTL_DAYS" envDefault:"14"`
 }
 
 // Indicates from which step it should generate/retrieve fresh data.
@@ -80,6 +83,14 @@ func validateConfig(cfg config) error {
 		}
 		if len(nonEmptyStrings(cfg.EmailTo)) == 0 {
 			return fmt.Errorf("invalid config: EMAIL_TO is required when ENABLE_EMAIL_SENDING=true")
+		}
+	}
+	if strings.TrimSpace(cfg.BriefingHistoryTable) != "" {
+		if cfg.BriefingHistoryLookbackDays <= 0 {
+			return fmt.Errorf("invalid config: BRIEFING_HISTORY_LOOKBACK_DAYS must be positive when BRIEFING_HISTORY_TABLE is set")
+		}
+		if cfg.BriefingHistoryTTLDays <= 0 {
+			return fmt.Errorf("invalid config: BRIEFING_HISTORY_TTL_DAYS must be positive when BRIEFING_HISTORY_TABLE is set")
 		}
 	}
 	return nil

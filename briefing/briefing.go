@@ -15,6 +15,14 @@ const (
 )
 
 func (g *LLMGenerator) generateFinalBriefing(ctx context.Context, state *briefingAgentState) (BriefingEmail, error) {
+	result, err := g.generateFinalBriefingResult(ctx, state)
+	if err != nil {
+		return BriefingEmail{}, err
+	}
+	return result.Email, nil
+}
+
+func (g *LLMGenerator) generateFinalBriefingResult(ctx context.Context, state *briefingAgentState) (GenerationResult, error) {
 	input := BriefingInput{
 		BriefingDate:   state.input.BriefingDate,
 		Session:        state.input.Session,
@@ -23,7 +31,11 @@ func (g *LLMGenerator) generateFinalBriefing(ctx context.Context, state *briefin
 		ReviewSummary:  state.reviewSummary,
 		ThemeClusters:  nil,
 	}
-	return g.generateFinalBriefingFromInput(ctx, input)
+	email, err := g.generateFinalBriefingFromInput(ctx, input)
+	if err != nil {
+		return GenerationResult{}, err
+	}
+	return GenerationResult{Email: email, FinalInput: input}, nil
 }
 
 func (g *LLMGenerator) GenerateFinalBriefing(ctx context.Context, input BriefingInput) (BriefingEmail, error) {
