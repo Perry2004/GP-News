@@ -11,6 +11,7 @@ import (
 
 const (
 	defaultCacheDir                  = "cache"
+	extractedNewsCacheFileName       = "extracted_news.json"
 	processedNewsCacheFileName       = "processed_news.json"
 	finalBriefingInputCacheFileName  = "final_briefing_input.json"
 	finalBriefingDraftCacheFileName  = "final_briefing_draft.json"
@@ -24,6 +25,32 @@ func LoadCachedBriefingEmail(cacheDir string) (BriefingEmail, error) {
 		return BriefingEmail{}, fmt.Errorf("load cached briefing email %q: %w", path, err)
 	}
 	return briefing, nil
+}
+
+func LoadCachedProcessedNews(cacheDir string) ([]ProcessedNews, error) {
+	var processed []ProcessedNews
+	path := cachedBriefingFilePath(cacheDir, processedNewsCacheFileName)
+	if err := readCacheJSON(path, &processed); err != nil {
+		return nil, fmt.Errorf("load cached processed news %q: %w", path, err)
+	}
+	return processed, nil
+}
+
+func StoreExtractedNews(cacheDir string, articles []ArticleInput) error {
+	path := cachedBriefingFilePath(cacheDir, extractedNewsCacheFileName)
+	if err := writeCacheJSON(path, articles); err != nil {
+		return fmt.Errorf("store extracted news %q: %w", path, err)
+	}
+	return nil
+}
+
+func LoadCachedFinalBriefingInput(cacheDir string) (BriefingInput, error) {
+	var input BriefingInput
+	path := cachedBriefingFilePath(cacheDir, finalBriefingInputCacheFileName)
+	if err := readCacheJSON(path, &input); err != nil {
+		return BriefingInput{}, fmt.Errorf("load cached final briefing input %q: %w", path, err)
+	}
+	return input, nil
 }
 
 func cachedBriefingFilePath(cacheDir string, fileName string) string {

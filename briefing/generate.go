@@ -98,6 +98,11 @@ func (g *LLMGenerator) GenerateBriefing(ctx context.Context, input BriefingAgent
 		return BriefingEmail{}, err
 	}
 	g.persistCacheJSON(processedNewsCacheFileName, processed)
+	return g.GenerateBriefingFromProcessedNews(ctx, input, processed)
+}
+
+func (g *LLMGenerator) GenerateBriefingFromProcessedNews(ctx context.Context, input BriefingAgentInput, processed []ProcessedNews) (BriefingEmail, error) {
+	validArticles := filterValidArticles(input.Articles)
 	processedArticleIDs := processedNewsArticleIDSet(processed)
 	reviewArticles := filterArticlesByIDSet(validArticles, processedArticleIDs)
 	input.Articles = reviewArticles
@@ -156,6 +161,22 @@ const (
 
 var errStructuredDecode = errors.New("structured LLM decode failure")
 
+type structuredDecodeFailure struct {
+	detail  string
+	content string
+}
+
+func (e *structuredDecodeFailure) Error() string {
+	if strings.TrimSpace(e.detail) == "" {
+		return errStructuredDecode.Error()
+	}
+	return fmt.Sprintf("%s: %s", errStructuredDecode, e.detail)
+}
+
+func (e *structuredDecodeFailure) Is(target error) bool {
+	return target == errStructuredDecode
+}
+
 // Call the LLM with the given structured input and output schema. Results are stored into g.Output.
 func generateStructured[T any](ctx context.Context, g *LLMGenerator, req structuredRequest[T]) error {
 	if g == nil || g.client == nil {
@@ -213,7 +234,8 @@ func generateStructured[T any](ctx context.Context, g *LLMGenerator, req structu
 			return err
 		}
 		if attempt < maxStructuredDecodeAttempts {
-			slog.Warn("Retrying structured LLM call after decode failure", structuredLogArgs(req,
+			params.Messages = append(params.Messages, openai.UserMessage(structuredDecodeRetryPrompt(err)))
+			slog.Warn("Retrying structured LLM call after structured output failure", structuredLogArgs(req,
 				"schema_name", req.Name,
 				"model", g.model,
 				"attempt", attempt,
@@ -223,6 +245,27 @@ func generateStructured[T any](ctx context.Context, g *LLMGenerator, req structu
 		}
 	}
 	return lastErr
+}
+
+func structuredDecodeRetryPrompt(err error) string {
+	detail := err.Error()
+	var decodeFailure *structuredDecodeFailure
+	if errors.As(err, &decodeFailure) && strings.TrimSpace(decodeFailure.detail) != "" {
+		detail = decodeFailure.detail
+	}
+
+	var b strings.Builder
+	b.WriteString("Your previous structured JSON response was invalid and could not be decoded against the required schema.\n")
+	b.WriteString("Decoder error:\n")
+	b.WriteString(detail)
+	b.WriteString("\n")
+	if errors.As(err, &decodeFailure) && strings.TrimSpace(decodeFailure.content) != "" {
+		b.WriteString("\nMalformed structured JSON response:\n```json\n")
+		b.WriteString(decodeFailure.content)
+		b.WriteString("\n```\n")
+	}
+	b.WriteString("\nReturn corrected JSON only, matching the same JSON schema exactly.")
+	return b.String()
 }
 
 func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req structuredRequest[T], params openai.ChatCompletionNewParams, payload []byte, startedAt time.Time, attempt int) error {
@@ -273,7 +316,7 @@ func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req 
 			"provider", provider,
 			"openrouter_metadata", metadata,
 		)...)
-		return errors.New("create chat completion: empty structured content")
+		return &structuredDecodeFailure{detail: "empty structured content"}
 	}
 
 	var output T
@@ -293,7 +336,10 @@ func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req 
 			"openrouter_metadata", metadata,
 			"error", err,
 		)...)
-		return fmt.Errorf("%w: decode structured content: %w", errStructuredDecode, err)
+		return &structuredDecodeFailure{
+			detail:  fmt.Sprintf("decode structured content: %v", err),
+			content: content,
+		}
 	}
 	var trailing struct{}
 	// decode and validate that result is a single valid JSON
@@ -309,7 +355,10 @@ func generateStructuredAttempt[T any](ctx context.Context, g *LLMGenerator, req 
 			"provider", provider,
 			"openrouter_metadata", metadata,
 		)...)
-		return fmt.Errorf("%w: decode structured content: trailing JSON tokens", errStructuredDecode)
+		return &structuredDecodeFailure{
+			detail:  "decode structured content: trailing JSON tokens",
+			content: content,
+		}
 	}
 	*req.Output = output
 	slog.Debug("Structured LLM call completed", structuredLogArgs(req,

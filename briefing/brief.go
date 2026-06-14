@@ -23,6 +23,14 @@ func (g *LLMGenerator) generateFinalBriefing(ctx context.Context, state *briefin
 		ReviewSummary:  state.reviewSummary,
 		ThemeClusters:  nil,
 	}
+	return g.generateFinalBriefingFromInput(ctx, input)
+}
+
+func (g *LLMGenerator) GenerateFinalBriefing(ctx context.Context, input BriefingInput) (BriefingEmail, error) {
+	return g.generateFinalBriefingFromInput(ctx, input)
+}
+
+func (g *LLMGenerator) generateFinalBriefingFromInput(ctx context.Context, input BriefingInput) (BriefingEmail, error) {
 	slog.Debug("Generating final briefing",
 		"briefing_date", input.BriefingDate,
 		"session", input.Session,

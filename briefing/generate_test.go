@@ -151,9 +151,16 @@ func TestGenerateProcessedNewsRejectsUnknownStructuredFields(t *testing.T) {
 
 	var mu sync.Mutex
 	callCount := 0
+	var requestBodies []map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+
 		mu.Lock()
 		callCount++
+		requestBodies = append(requestBodies, requestBody)
 		mu.Unlock()
 
 		response := map[string]any{
@@ -204,9 +211,29 @@ func TestGenerateProcessedNewsRejectsUnknownStructuredFields(t *testing.T) {
 		t.Fatalf("GenerateProcessedNews() error = %v, want unknown include field", err)
 	}
 	mu.Lock()
-	defer mu.Unlock()
-	if callCount != maxStructuredDecodeAttempts {
-		t.Fatalf("call count = %d, want %d", callCount, maxStructuredDecodeAttempts)
+	bodies := append([]map[string]any(nil), requestBodies...)
+	count := callCount
+	mu.Unlock()
+	if count != maxStructuredDecodeAttempts {
+		t.Fatalf("call count = %d, want %d", count, maxStructuredDecodeAttempts)
+	}
+	if len(bodies) != maxStructuredDecodeAttempts {
+		t.Fatalf("request body count = %d, want %d", len(bodies), maxStructuredDecodeAttempts)
+	}
+	firstMessages := requestMessages(t, bodies[0])
+	retryMessages := requestMessages(t, bodies[1])
+	if len(retryMessages) <= len(firstMessages) {
+		t.Fatalf("retry message count = %d, want more than first attempt %d", len(retryMessages), len(firstMessages))
+	}
+	retryHint := messageContent(t, retryMessages[len(retryMessages)-1])
+	if !strings.Contains(retryHint, `unknown field "include"`) {
+		t.Fatalf("retry hint missing unknown field error:\n%s", retryHint)
+	}
+	if !strings.Contains(retryHint, `{"include":true}`) {
+		t.Fatalf("retry hint missing malformed structured JSON:\n%s", retryHint)
+	}
+	if !strings.Contains(retryHint, "Return corrected JSON only") {
+		t.Fatalf("retry hint missing correction instruction:\n%s", retryHint)
 	}
 }
 
@@ -215,10 +242,17 @@ func TestGenerateProcessedNewsRetriesMalformedStructuredJSON(t *testing.T) {
 
 	var mu sync.Mutex
 	callCount := 0
+	var requestBodies []map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+
 		mu.Lock()
 		callCount++
 		currentCall := callCount
+		requestBodies = append(requestBodies, requestBody)
 		mu.Unlock()
 
 		if currentCall < maxStructuredDecodeAttempts {
@@ -249,9 +283,94 @@ func TestGenerateProcessedNewsRetriesMalformedStructuredJSON(t *testing.T) {
 		t.Fatalf("headline = %q, want Headline", output.Headline)
 	}
 	mu.Lock()
+	bodies := append([]map[string]any(nil), requestBodies...)
+	count := callCount
+	mu.Unlock()
+	if count != maxStructuredDecodeAttempts {
+		t.Fatalf("call count = %d, want %d", count, maxStructuredDecodeAttempts)
+	}
+	if len(bodies) != maxStructuredDecodeAttempts {
+		t.Fatalf("request body count = %d, want %d", len(bodies), maxStructuredDecodeAttempts)
+	}
+	firstMessages := requestMessages(t, bodies[0])
+	retryMessages := requestMessages(t, bodies[1])
+	if len(retryMessages) <= len(firstMessages) {
+		t.Fatalf("retry message count = %d, want more than first attempt %d", len(retryMessages), len(firstMessages))
+	}
+	retryHint := messageContent(t, retryMessages[len(retryMessages)-1])
+	if !strings.Contains(retryHint, `{"headline":"cut off`) {
+		t.Fatalf("retry hint missing malformed structured JSON:\n%s", retryHint)
+	}
+	if !strings.Contains(retryHint, "unexpected EOF") {
+		t.Fatalf("retry hint missing decoder error:\n%s", retryHint)
+	}
+	if !strings.Contains(retryHint, "Return corrected JSON only") {
+		t.Fatalf("retry hint missing correction instruction:\n%s", retryHint)
+	}
+}
+
+func TestGenerateProcessedNewsRetriesEmptyStructuredContent(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		callCount++
+		currentCall := callCount
+		mu.Unlock()
+
+		if currentCall == 1 {
+			response := map[string]any{
+				"id":      "chatcmpl-test",
+				"object":  "chat.completion",
+				"created": 0,
+				"model":   TestModel,
+				"choices": []map[string]any{
+					{
+						"index": 0,
+						"message": map[string]any{
+							"role":    "assistant",
+							"content": nil,
+							"refusal": nil,
+						},
+						"finish_reason": "stop",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatalf("encode response: %v", err)
+			}
+			return
+		}
+		writeChatContent(t, w, processedNewsJSON("a1", true, "Headline", "Summary."))
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{
+		BaseURL: server.URL,
+		APIKey:  "test-key",
+		Model:   TestModel,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	output, err := g.GenerateProcessedNews(t.Context(), ProcessNewsInput{
+		BriefingDate: "2026-05-30",
+		Article:      ArticleInput{ID: "a1", Title: "Headline", Link: "https://example.test/a1"},
+	})
+	if err != nil {
+		t.Fatalf("GenerateProcessedNews() error = %v", err)
+	}
+	if output.Headline != "Headline" {
+		t.Fatalf("headline = %q, want Headline", output.Headline)
+	}
+	mu.Lock()
 	defer mu.Unlock()
-	if callCount != maxStructuredDecodeAttempts {
-		t.Fatalf("call count = %d, want %d", callCount, maxStructuredDecodeAttempts)
+	if callCount != 2 {
+		t.Fatalf("call count = %d, want 2", callCount)
 	}
 }
 
@@ -672,6 +791,113 @@ func TestGenerateBriefingPassesReviewedNewsAndReviewSummaryToFinalComposer(t *te
 	readCachedTestJSON(t, cachedBriefingFilePath(cacheDir, finalBriefingOutputCacheFileName), &finalOutput)
 	if finalOutput.Subject != "GP News" || finalNewsCardCount(finalOutput) != finalNewsCardMin {
 		t.Fatalf("cached final output = %#v", finalOutput)
+	}
+}
+
+func TestGenerateBriefingFromProcessedNewsSkipsSingleNewsProcessing(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	reviewCalled := false
+	finalCalled := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+
+		switch responseSchemaName(requestBody) {
+		case "processed_news":
+			t.Fatal("GenerateBriefingFromProcessedNews should not request processed_news")
+		case "briefing_email":
+			finalCalled = true
+			writeChatContent(t, w, briefingEmailJSON())
+		default:
+			reviewCalled = true
+			writeToolCall(t, w, toolFinishReview, `{"article_ids":["a1"],"selection_rationale":"Cached summaries reviewed.","global_context":"No extra context."}`)
+		}
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	output, err := g.GenerateBriefingFromProcessedNews(t.Context(), BriefingAgentInput{
+		BriefingDate: "2026-05-30",
+		Session:      "Morning",
+		Articles: []ArticleInput{
+			{ID: "a1", BucketID: "markets", BucketName: "Markets", Title: "A1 title", Link: "https://example.test/a1", ExtractedContent: "A1 full content"},
+		},
+	}, []ProcessedNews{
+		{
+			ArticleID:            "a1",
+			Headline:             "Cached A1 headline",
+			Summary:              "Cached A1 summary",
+			MarketRelevanceScore: 8.5,
+			KeepForBriefing:      true,
+			SourceURL:            "https://example.test/a1",
+			SourceName:           "example.test",
+			Confidence:           "High",
+		},
+	})
+	if err != nil {
+		t.Fatalf("GenerateBriefingFromProcessedNews() error = %v", err)
+	}
+	if output.Subject != "GP News" {
+		t.Fatalf("output subject = %q, want GP News", output.Subject)
+	}
+	if !reviewCalled || !finalCalled {
+		t.Fatalf("reviewCalled=%v finalCalled=%v, want both true", reviewCalled, finalCalled)
+	}
+}
+
+func TestGenerateFinalBriefingUsesReviewedInputDirectly(t *testing.T) {
+	t.Parallel()
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var requestBody map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		requestCount++
+		if got := responseSchemaName(requestBody); got != "briefing_email" {
+			t.Fatalf("response schema = %q, want briefing_email", got)
+		}
+		writeChatContent(t, w, briefingEmailJSON())
+	}))
+	defer server.Close()
+
+	g, err := NewLLMGenerator(Config{BaseURL: server.URL, APIKey: "test-key", Model: TestModel})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	output, err := g.GenerateFinalBriefing(t.Context(), BriefingInput{
+		BriefingDate: "2026-05-30",
+		Session:      "Morning",
+		ReviewedNews: []ReviewedNews{
+			{
+				News:          ProcessedNews{ArticleID: "a1", Headline: "Reviewed headline", Summary: "Reviewed summary.", SourceURL: "https://example.test/a1", SourceName: "example.test"},
+				PriorityScore: 8.5,
+				ReviewNote:    "Cached review note.",
+			},
+		},
+		ReviewSummary: ReviewSummary{SelectionRationale: "Use cached review.", GlobalContext: "Context."},
+	})
+	if err != nil {
+		t.Fatalf("GenerateFinalBriefing() error = %v", err)
+	}
+	if output.Subject != "GP News" {
+		t.Fatalf("output subject = %q, want GP News", output.Subject)
+	}
+	if requestCount != 1 {
+		t.Fatalf("request count = %d, want 1", requestCount)
 	}
 }
 
