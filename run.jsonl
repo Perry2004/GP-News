@@ -1,0 +1,15 @@
+cd email/template && pnpm install --frozen-lockfile
+Already up to date
+Done in 207ms using pnpm v11.5.0
+cd email/template && pnpm typecheck
+cd email/template && pnpm export
+Preparing files...
+✔ Preparing files...
+rendering template.cjs
+✔ Rendered all files
+Copying static files
+✔ Copying static files
+out
+└── template.html
+[32m✔[39m Successfully exported emails
+go run ./cmd/local

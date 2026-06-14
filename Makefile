@@ -1,5 +1,6 @@
 APP := $(notdir $(shell go list -m))
 BIN_DIR := bin
+CACHE_DIR ?= cache
 BIN := $(BIN_DIR)/$(APP)
 EMAIL_TEMPLATE_DIR := email/template
 GOLANGCI_LINT ?= golangci-lint
@@ -32,6 +33,7 @@ go-check: go-format tidy lint test
 
 clean:
 	rm -rf $(BIN_DIR) $(EMAIL_TEMPLATE_DIR)/out
+	rm -rf $(CACHE_DIR)
 
 format: go-format email-template-format
 

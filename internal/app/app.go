@@ -1,53 +1,17 @@
 package app
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	htmltemplate "html/template"
 	"log/slog"
-	"net/url"
-	"os"
-	"path/filepath"
-	"reflect"
-	"regexp"
-	"strings"
-	"time"
 
 	"github.com/caarlos0/env/v11"
-	"github.com/joho/godotenv"
 
 	"github.com/Perry2004/GP-News/briefing"
 	"github.com/Perry2004/GP-News/email"
-	emailtemplate "github.com/Perry2004/GP-News/email/template"
-	"github.com/Perry2004/GP-News/ingest"
 )
 
-type config struct {
-	LogLevel               string   `env:"LOG_LEVEL" envDefault:"info"` // debug, info, warn, error
-	NewsDataAPIKey         string   `env:"NEWS_DATA_API_KEY"`
-	EnableFetching         bool     `env:"ENABLE_FETCHING" envDefault:"true"`
-	PersistData            bool     `env:"PERSIST_DATA" envDefault:"false"`
-	Model                  string   `env:"MODEL"`
-	BaseURL                string   `env:"BASE_URL" envDefault:"https://api.openai.com/v1"`
-	LLMAPIKey              string   `env:"LLM_API_KEY"`
-	LLMMaxCompletionTokens int64    `env:"LLM_MAX_COMPLETION_TOKENS" envDefault:"0"`
-	LLMTemperature         float64  `env:"LLM_TEMPERATURE" envDefault:"0"`
-	LLMThinkingLevel       string   `env:"LLM_THINKING_LEVEL" envDefault:"medium"`
-	LLMProviderIgnore      []string `env:"LLM_PROVIDER_IGNORE" envSeparator:","`
-	SendEmail              bool     `env:"SEND_EMAIL" envDefault:"true"`
-	EmailFrom              string   `env:"EMAIL_FROM"`
-	EmailTo                []string `env:"EMAIL_TO" envSeparator:","`
-	AWSSESRegion           string   `env:"AWS_SES_REGION"`
-	CacheDir               string   `env:"CACHE_DIR" envDefault:"cache"`
-}
-
-const (
-	emailTemplatePath     = "email/template/out/template.html"
-	renderedEmailFileName = "briefing_email.html"
-)
-
+// Final returned result
 type Result struct {
 	Subject   string `json:"subject,omitempty"`
 	EmailSent bool   `json:"email_sent"`
@@ -74,458 +38,43 @@ func Run(ctx context.Context) (Result, error) {
 	slog.Debug("GP-News configuration loaded", "environment", envName, "config", maskedConfig(cfg))
 	slog.Info("Starting GP-News")
 
-	if !cfg.EnableFetching {
-		slog.Info("Fetching disabled; loading cached final briefing", "cache_dir", cfg.CacheDir)
-		briefingEmail, err := briefing.LoadCachedBriefingEmail(cfg.CacheDir)
-		if err != nil {
-			return Result{}, fmt.Errorf("failed to load cached final briefing: %w", err)
-		}
-		renderedEmailPath, err := renderBriefingEmailHTML(briefingEmail, cfg.CacheDir)
-		if err != nil {
-			return Result{}, fmt.Errorf("failed to render cached briefing email: %w", err)
-		}
-		slog.Info("Rendered cached briefing email", "file", renderedEmailPath)
-		messageID, err := sendRenderedBriefingEmail(ctx, cfg, briefingEmail, renderedEmailPath)
-		if err != nil {
-			return Result{}, fmt.Errorf("failed to send cached briefing email: %w", err)
-		}
-		return resultForBriefing(cfg, briefingEmail, messageID), nil
-	}
-
-	marketValues, categoryBuckets, regionBuckets, err := ingest.RetrieveData(ctx, ingest.Config{
-		NewsDataAPIKey: cfg.NewsDataAPIKey,
-		EnableFetching: cfg.EnableFetching,
-		PersistData:    cfg.PersistData,
-		CacheDir:       cfg.CacheDir,
-	})
+	freshFrom, err := freshFromConfig(cfg)
 	if err != nil {
 		return Result{}, err
 	}
 
-	llm, err := briefing.NewLLMGenerator(briefing.Config{
-		BaseURL:             cfg.BaseURL,
-		APIKey:              cfg.LLMAPIKey,
-		Model:               cfg.Model,
-		MaxCompletionTokens: cfg.LLMMaxCompletionTokens,
-		Temperature:         cfg.LLMTemperature,
-		ThinkingLevel:       cfg.LLMThinkingLevel,
-		ProviderIgnore:      cfg.LLMProviderIgnore,
-		PersistData:         cfg.PersistData,
-		CacheDir:            cfg.CacheDir,
-	})
+	briefingEmail, err := generateBriefingEmail(ctx, cfg, freshFrom)
 	if err != nil {
-		return Result{}, fmt.Errorf("failed to create LLM generator: %w", err)
+		return Result{}, err
 	}
 
-	now := time.Now()
-	briefingDate := now.Format(time.DateOnly)
-	session := briefingSession(now)
-	articles := buildArticleInputs(categoryBuckets, regionBuckets)
-	marketSnapshot := buildMarketInputs(marketValues)
-
-	briefingEmail, err := llm.GenerateBriefing(ctx, briefing.BriefingAgentInput{
-		BriefingDate:   briefingDate,
-		Session:        session,
-		MarketSnapshot: marketSnapshot,
-		Articles:       articles,
-	})
-	if err != nil {
-		return Result{}, fmt.Errorf("failed to generate briefing: %w", err)
-	}
-	slog.Info("Generated briefing", "output", briefingEmail)
-
-	renderedEmailPath, err := renderBriefingEmailHTML(briefingEmail, cfg.CacheDir)
+	renderedEmailPath, err := email.RenderBriefingHTML(briefingEmail, cfg.CacheDir)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to render briefing email: %w", err)
 	}
 	slog.Info("Rendered briefing email", "file", renderedEmailPath)
 
-	messageID, err := sendRenderedBriefingEmail(ctx, cfg, briefingEmail, renderedEmailPath)
-	if err != nil {
-		return Result{}, fmt.Errorf("failed to send briefing email: %w", err)
+	var messageID string
+	if cfg.EnableEmailSending {
+		messageID, err = email.SendRenderedHTML(ctx, email.Config{
+			From:   cfg.EmailFrom,
+			To:     cfg.EmailTo,
+			Region: cfg.AWSSESRegion,
+		}, briefingEmail.Subject, renderedEmailPath)
+		if err != nil {
+			return Result{}, fmt.Errorf("failed to send briefing email: %w", err)
+		}
+	} else {
+		slog.Info("Email sending disabled", "enable_email_sending", cfg.EnableEmailSending)
 	}
 
 	return resultForBriefing(cfg, briefingEmail, messageID), nil
 }
 
-func loadEnv() (string, error) {
-	envName := os.Getenv("ENVIRONMENT")
-	switch strings.ToLower(strings.TrimSpace(envName)) {
-	case "", "dev": // Default to dev env
-		if err := godotenv.Load(); err != nil {
-			return "", fmt.Errorf("failed to load .env file: %w", err)
-		}
-	case "prod":
-		// Skip loading .env
-	default:
-		return "", fmt.Errorf("invalid environment %q: expected dev or prod", envName)
-	}
-
-	return envName, nil
-}
-
-func validateConfig(cfg config) error {
-	if cfg.EnableFetching && strings.TrimSpace(cfg.NewsDataAPIKey) == "" {
-		return fmt.Errorf("invalid config: NEWS_DATA_API_KEY is required when ENABLE_FETCHING=true")
-	}
-	if cfg.SendEmail {
-		if strings.TrimSpace(cfg.EmailFrom) == "" {
-			return fmt.Errorf("invalid config: EMAIL_FROM is required when SEND_EMAIL=true")
-		}
-		if len(nonEmptyStrings(cfg.EmailTo)) == 0 {
-			return fmt.Errorf("invalid config: EMAIL_TO is required when SEND_EMAIL=true")
-		}
-	}
-	return nil
-}
-
-func sendRenderedBriefingEmail(ctx context.Context, cfg config, briefingEmail briefing.BriefingEmail, renderedEmailPath string) (string, error) {
-	if !cfg.SendEmail {
-		slog.Info("Email sending disabled", "send_email", cfg.SendEmail)
-		return "", nil
-	}
-
-	htmlBody, err := os.ReadFile(renderedEmailPath)
-	if err != nil {
-		return "", fmt.Errorf("read rendered email HTML %q: %w", renderedEmailPath, err)
-	}
-
-	sender, err := email.NewSESSender(ctx, email.Config{
-		From:   cfg.EmailFrom,
-		To:     cfg.EmailTo,
-		Region: cfg.AWSSESRegion,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	messageID, err := sender.SendHTML(ctx, briefingEmail.Subject, string(htmlBody))
-	if err != nil {
-		return "", err
-	}
-
-	slog.Info("Sent briefing email", "message_id", messageID, "recipient_count", len(nonEmptyStrings(cfg.EmailTo)))
-	return messageID, nil
-}
-
 func resultForBriefing(cfg config, briefingEmail briefing.BriefingEmail, messageID string) Result {
 	return Result{
 		Subject:   briefingEmail.Subject,
-		EmailSent: cfg.SendEmail,
+		EmailSent: cfg.EnableEmailSending,
 		MessageID: messageID,
 	}
-}
-
-func nonEmptyStrings(values []string) []string {
-	nonEmpty := make([]string, 0, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" {
-			nonEmpty = append(nonEmpty, value)
-		}
-	}
-	return nonEmpty
-}
-
-// Returns a list of articles with valid links, de-duplicated by link.
-func buildArticleInputs(categoryBuckets []ingest.NewsArticleBucket, regionBuckets []ingest.NewsArticleBucket) []briefing.ArticleInput {
-	articles := make([]briefing.ArticleInput, 0)
-	seenLinks := make(map[string]bool)
-
-	addBucket := func(bucket ingest.NewsArticleBucket) {
-		for i, article := range bucket.Articles {
-			linkKey := strings.TrimSpace(article.Link)
-			if linkKey != "" {
-				if seenLinks[linkKey] {
-					continue
-				}
-				seenLinks[linkKey] = true
-			}
-
-			articles = append(articles, briefing.ArticleInput{
-				ID:                 fmt.Sprintf("%s_%d", bucket.ID, i),
-				BucketID:           bucket.ID,
-				BucketName:         bucket.Name,
-				Title:              article.Title,
-				Link:               article.Link,
-				ExtractedTitle:     optionalStringValue(article.ExtractedTitle),
-				ExtractedContent:   optionalStringValue(article.ExtractedContent),
-				ExtractedWordCount: optionalIntValue(article.ExtractedWordCount),
-				ExtractionError:    article.ExtractionError,
-			})
-		}
-	}
-
-	for _, bucket := range categoryBuckets {
-		addBucket(bucket)
-	}
-	for _, bucket := range regionBuckets {
-		addBucket(bucket)
-	}
-
-	return articles
-}
-
-func buildMarketInputs(marketValues []ingest.MarketValue) []briefing.MarketInput {
-	marketInputs := make([]briefing.MarketInput, 0, len(marketValues))
-	for _, value := range marketValues {
-		marketInputs = append(marketInputs, briefing.MarketInput{
-			ID:          value.ID,
-			Name:        value.Name,
-			Category:    value.Category,
-			Symbol:      value.Symbol,
-			Level:       fmt.Sprintf("%g", value.Value),
-			DailyChange: formatMarketDailyChange(value),
-			Timestamp:   value.Timestamp.Format(time.RFC3339),
-			History:     buildMarketHistoryInputs(value.History),
-			Source:      value.Source,
-		})
-	}
-	return marketInputs
-}
-
-func formatMarketDailyChange(value ingest.MarketValue) string {
-	if !value.DailyChangeValid {
-		return ""
-	}
-	return fmt.Sprintf("%+.2f (%+.2f%%)", value.DailyChange, value.DailyChangePercent)
-}
-
-func buildMarketHistoryInputs(history []ingest.MarketHistoryPoint) []briefing.MarketHistoryPoint {
-	if len(history) == 0 {
-		return nil
-	}
-
-	points := make([]briefing.MarketHistoryPoint, 0, len(history))
-	for _, point := range history {
-		points = append(points, briefing.MarketHistoryPoint{
-			Timestamp: point.Timestamp.Format(time.RFC3339),
-			Close:     fmt.Sprintf("%g", point.Close),
-		})
-	}
-	return points
-}
-
-func renderBriefingEmailHTML(briefingEmail briefing.BriefingEmail, cacheDir string) (string, error) {
-	return renderBriefingEmailHTMLWithBytes(
-		briefingEmail,
-		filepath.Base(emailTemplatePath),
-		renderedEmailFilePath(cacheDir),
-		emailtemplate.HTML,
-	)
-}
-
-func renderedEmailFilePath(cacheDir string) string {
-	return filepath.Join(normalizedCacheDir(cacheDir), renderedEmailFileName)
-}
-
-func normalizedCacheDir(cacheDir string) string {
-	cacheDir = strings.TrimSpace(cacheDir)
-	if cacheDir == "" {
-		return "cache"
-	}
-	return cacheDir
-}
-
-func renderBriefingEmailHTMLWithPaths(briefingEmail briefing.BriefingEmail, templatePath string, outputPath string) (string, error) {
-	templateBytes, err := os.ReadFile(templatePath)
-	if err != nil {
-		return "", fmt.Errorf("read email template %q: %w", templatePath, err)
-	}
-	return renderBriefingEmailHTMLWithBytes(briefingEmail, filepath.Base(templatePath), outputPath, templateBytes)
-}
-
-func renderBriefingEmailHTMLWithBytes(briefingEmail briefing.BriefingEmail, templateName string, outputPath string, templateBytes []byte) (string, error) {
-	data, err := briefingTemplateData(briefingEmail)
-	if err != nil {
-		return "", err
-	}
-	if err := executeHTMLTemplateBytes(templateName, outputPath, templateBytes, data); err != nil {
-		return "", err
-	}
-	info, err := os.Stat(outputPath)
-	if err != nil {
-		return "", fmt.Errorf("stat rendered email HTML: %w", err)
-	}
-	slog.Info("Briefing email HTML written", "file", outputPath, "bytes", info.Size())
-	return outputPath, nil
-}
-
-func briefingTemplateData(briefingEmail briefing.BriefingEmail) (map[string]any, error) {
-	payload, err := json.Marshal(briefingEmail)
-	if err != nil {
-		return nil, fmt.Errorf("marshal briefing email: %w", err)
-	}
-	var data map[string]any
-	if err := json.Unmarshal(payload, &data); err != nil {
-		return nil, fmt.Errorf("unmarshal briefing email template data: %w", err)
-	}
-	data["full_news_card_count"] = len(briefingEmail.TopNewsByTopic.MarketsMacro) +
-		len(briefingEmail.TopNewsByTopic.PoliticsPolicy) +
-		len(briefingEmail.TopNewsByTopic.WarGeopoliticalRisk) +
-		len(briefingEmail.TopNewsByTopic.TechnologyAI)
-	return data, nil
-}
-
-func executeHTMLTemplate(templatePath string, outputPath string, data any) error {
-	templateBytes, err := os.ReadFile(templatePath)
-	if err != nil {
-		return fmt.Errorf("read email template %q: %w", templatePath, err)
-	}
-	return executeHTMLTemplateBytes(filepath.Base(templatePath), outputPath, templateBytes, data)
-}
-
-func executeHTMLTemplateBytes(templateName string, outputPath string, templateBytes []byte, data any) error {
-	tmpl, err := htmltemplate.New(templateName).Funcs(htmltemplate.FuncMap{
-		"inc": func(value int) int {
-			return value + 1
-		},
-	}).Parse(string(templateBytes))
-	if err != nil {
-		return fmt.Errorf("parse email template %q: %w", templateName, err)
-	}
-
-	var output bytes.Buffer
-	if err := tmpl.Execute(&output, data); err != nil {
-		return fmt.Errorf("execute email template %q: %w", templateName, err)
-	}
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
-		return fmt.Errorf("create rendered email directory: %w", err)
-	}
-	if err := os.WriteFile(outputPath, output.Bytes(), 0644); err != nil {
-		return fmt.Errorf("write rendered email HTML %q: %w", outputPath, err)
-	}
-	return nil
-}
-
-// Returns Morning or Night based on the time.
-func briefingSession(now time.Time) string {
-	if now.Hour() < 12 {
-		return "Morning"
-	}
-	return "Night"
-}
-
-func optionalStringValue(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
-}
-
-func optionalIntValue(value *int) int {
-	if value == nil {
-		return 0
-	}
-	return *value
-}
-
-func configureLogger(cfg config) error {
-	var logLevel slog.Level
-	switch strings.ToLower(strings.TrimSpace(cfg.LogLevel)) {
-	case "debug":
-		logLevel = slog.LevelDebug
-	case "", "info":
-		logLevel = slog.LevelInfo
-	case "warn":
-		logLevel = slog.LevelWarn
-	case "error":
-		logLevel = slog.LevelError
-	default:
-		return fmt.Errorf("invalid log level %q: expected debug, info, warn, or error", cfg.LogLevel)
-	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level:       logLevel,
-		ReplaceAttr: maskSensitiveLogAttr,
-	}))
-	slog.SetDefault(logger)
-	return nil
-}
-
-func maskSensitiveLogAttr(_ []string, attr slog.Attr) slog.Attr {
-	maskedValue, changed := maskLogValue(attr.Value.Any())
-	if changed {
-		attr.Value = slog.AnyValue(maskedValue)
-	}
-	return attr
-}
-
-func maskLogValue(value any) (any, bool) {
-	switch value := value.(type) {
-	case string:
-		masked := maskSensitiveURLSubstrings(value)
-		return masked, masked != value
-	case error:
-		masked := maskSensitiveURLSubstrings(value.Error())
-		return masked, masked != value.Error()
-	case fmt.Stringer:
-		stringValue := value.String()
-		masked := maskSensitiveURLSubstrings(stringValue)
-		return masked, masked != stringValue
-	default:
-		return value, false
-	}
-}
-
-var httpURLPattern = regexp.MustCompile(`https?://[^\s"'<>()]+`)
-
-func maskSensitiveURLSubstrings(value string) string {
-	return httpURLPattern.ReplaceAllStringFunc(value, maskSensitiveURLQuery)
-}
-
-func maskSensitiveURLQuery(rawURL string) string {
-	parsedURL, err := url.Parse(rawURL)
-	if err != nil {
-		return rawURL
-	}
-
-	query := parsedURL.Query()
-	masked := false
-	const mask = "********"
-	for key, values := range query {
-		if !isSensitiveQueryKey(key) {
-			continue
-		}
-
-		for i := range values {
-			values[i] = mask
-		}
-		query[key] = values
-		masked = true
-	}
-
-	if !masked {
-		return rawURL
-	}
-
-	parsedURL.RawQuery = strings.ReplaceAll(query.Encode(), url.QueryEscape(mask), mask)
-	return parsedURL.String()
-}
-
-func isSensitiveQueryKey(key string) bool {
-	switch strings.ToLower(key) {
-	case "apikey", "api_key":
-		return true
-	default:
-		return false
-	}
-}
-
-// Returns a string of the current config with sensitive fields masked for logging.
-func maskedConfig(cfg config) config {
-	masked := cfg
-	cfgValue := reflect.ValueOf(&masked).Elem()
-	cfgType := cfgValue.Type()
-
-	for i := range cfgValue.NumField() {
-		field := cfgValue.Field(i)
-		fieldName := cfgType.Field(i).Name
-
-		if field.Kind() == reflect.String && strings.Contains(strings.ToLower(fieldName), "key") {
-			field.SetString("********")
-		}
-	}
-
-	return masked
 }

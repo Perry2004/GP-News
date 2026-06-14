@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Perry2004/GP-News/briefing"
+	"github.com/Perry2004/GP-News/email"
 	"github.com/Perry2004/GP-News/ingest"
 
 	"github.com/caarlos0/env/v11"
@@ -59,8 +60,36 @@ func TestConfigParsesEmailToList(t *testing.T) {
 	if len(cfg.EmailTo) != 2 || cfg.EmailTo[0] != "reader@example.com" || cfg.EmailTo[1] != "desk@example.com" {
 		t.Fatalf("EmailTo = %#v, want [reader@example.com desk@example.com]", cfg.EmailTo)
 	}
-	if !cfg.SendEmail {
-		t.Fatal("SendEmail not defaulted to true")
+	if !cfg.EnableEmailSending {
+		t.Fatal("EnableEmailSending not defaulted to true")
+	}
+}
+
+func TestConfigParsesFreshFromDefault(t *testing.T) {
+	cfg, err := env.ParseAs[config]()
+	if err != nil {
+		t.Fatalf("ParseAs() error = %v", err)
+	}
+
+	if cfg.FreshFrom != string(FreshFromFetching) {
+		t.Fatalf("FreshFrom = %q, want fetching", cfg.FreshFrom)
+	}
+}
+
+func TestConfigParsesFreshFromOverride(t *testing.T) {
+	t.Setenv("FRESH_FROM", "review")
+
+	cfg, err := env.ParseAs[config]()
+	if err != nil {
+		t.Fatalf("ParseAs() error = %v", err)
+	}
+
+	freshFrom, err := freshFromConfig(cfg)
+	if err != nil {
+		t.Fatalf("freshFromConfig() error = %v", err)
+	}
+	if freshFrom != FreshFromReview {
+		t.Fatalf("freshFrom = %q, want review", freshFrom)
 	}
 }
 
@@ -78,8 +107,8 @@ func TestConfigParsesCacheDir(t *testing.T) {
 }
 
 func TestValidateConfigRequiresEmailFieldsOnlyWhenSending(t *testing.T) {
-	if err := validateConfig(config{EnableFetching: false}); err != nil {
-		t.Fatalf("validateConfig() with SEND_EMAIL=false error = %v", err)
+	if err := validateConfig(config{FreshFrom: "cached", EnableEmailSending: false}); err != nil {
+		t.Fatalf("validateConfig() with ENABLE_EMAIL_SENDING=false error = %v", err)
 	}
 
 	tests := []struct {
@@ -90,19 +119,19 @@ func TestValidateConfigRequiresEmailFieldsOnlyWhenSending(t *testing.T) {
 		{
 			name: "from",
 			cfg: config{
-				EnableFetching: false,
-				SendEmail:      true,
-				EmailTo:        []string{"reader@example.com"},
+				FreshFrom:          "cached",
+				EnableEmailSending: true,
+				EmailTo:            []string{"reader@example.com"},
 			},
 			want: "EMAIL_FROM is required",
 		},
 		{
 			name: "to",
 			cfg: config{
-				EnableFetching: false,
-				SendEmail:      true,
-				EmailFrom:      "sender@example.com",
-				EmailTo:        []string{"", " "},
+				FreshFrom:          "cached",
+				EnableEmailSending: true,
+				EmailFrom:          "sender@example.com",
+				EmailTo:            []string{"", " "},
 			},
 			want: "EMAIL_TO is required",
 		},
@@ -121,15 +150,83 @@ func TestValidateConfigRequiresEmailFieldsOnlyWhenSending(t *testing.T) {
 	}
 }
 
-func TestValidateConfigAcceptsSendEmailConfig(t *testing.T) {
+func TestValidateConfigAcceptsEmailSendingConfig(t *testing.T) {
 	err := validateConfig(config{
-		EnableFetching: false,
-		SendEmail:      true,
-		EmailFrom:      "sender@example.com",
-		EmailTo:        []string{"reader@example.com"},
+		FreshFrom:          "cached",
+		EnableEmailSending: true,
+		EmailFrom:          "sender@example.com",
+		EmailTo:            []string{"reader@example.com"},
 	})
 	if err != nil {
 		t.Fatalf("validateConfig() error = %v", err)
+	}
+}
+
+func TestValidateConfigRequiresFreshFromDependencies(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  config
+		want string
+	}{
+		{
+			name: "invalid fresh from",
+			cfg:  config{FreshFrom: "final_generation", EnableEmailSending: false},
+			want: "invalid FRESH_FROM",
+		},
+		{
+			name: "news api key",
+			cfg: config{
+				FreshFrom:          "fetching",
+				EnableEmailSending: false,
+				BaseURL:            "https://example.test",
+				LLMAPIKey:          "llm-key",
+				Model:              "test-model",
+			},
+			want: "NEWS_DATA_API_KEY is required",
+		},
+		{
+			name: "llm api key",
+			cfg: config{
+				FreshFrom:          "review",
+				EnableEmailSending: false,
+				BaseURL:            "https://example.test",
+				Model:              "test-model",
+			},
+			want: "LLM_API_KEY is required",
+		},
+		{
+			name: "model",
+			cfg: config{
+				FreshFrom:          "briefing",
+				EnableEmailSending: false,
+				BaseURL:            "https://example.test",
+				LLMAPIKey:          "llm-key",
+			},
+			want: "MODEL is required",
+		},
+		{
+			name: "cached skips llm credentials",
+			cfg:  config{FreshFrom: "cached", EnableEmailSending: false},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateConfig(tt.cfg)
+			if tt.want == "" {
+				if err != nil {
+					t.Fatalf("validateConfig() error = %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("validateConfig() returned nil error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want %q", err.Error(), tt.want)
+			}
+		})
 	}
 }
 
@@ -176,16 +273,16 @@ func TestBuildMarketInputsIncludesDailyChangeAndHistory(t *testing.T) {
 func TestBriefingTemplateDataUsesStructuredOutputShape(t *testing.T) {
 	briefingEmail := testBriefingEmail()
 
-	data, err := briefingTemplateData(briefingEmail)
+	data, err := email.BriefingTemplateData(briefingEmail)
 	if err != nil {
-		t.Fatalf("briefingTemplateData returned error: %v", err)
+		t.Fatalf("BriefingTemplateData returned error: %v", err)
 	}
 
 	if data["criticality_score"] != float64(8.5) {
 		t.Fatalf("criticality_score = %#v, want 8.5", data["criticality_score"])
 	}
 	if _, ok := data["criticalityScore"]; ok {
-		t.Fatal("briefingTemplateData included camelCase criticalityScore key")
+		t.Fatal("BriefingTemplateData included camelCase criticalityScore key")
 	}
 	if data["full_news_card_count"] != 1 {
 		t.Fatalf("full_news_card_count = %#v, want 1", data["full_news_card_count"])
@@ -226,13 +323,13 @@ func TestExecuteHTMLTemplateRendersNestedBriefingData(t *testing.T) {
 	if err := os.WriteFile(templatePath, []byte(templateContent), 0644); err != nil {
 		t.Fatalf("write template: %v", err)
 	}
-	data, err := briefingTemplateData(testBriefingEmail())
+	data, err := email.BriefingTemplateData(testBriefingEmail())
 	if err != nil {
-		t.Fatalf("briefingTemplateData returned error: %v", err)
+		t.Fatalf("BriefingTemplateData returned error: %v", err)
 	}
 
-	if err := executeHTMLTemplate(templatePath, outputPath, data); err != nil {
-		t.Fatalf("executeHTMLTemplate returned error: %v", err)
+	if err := email.ExecuteHTMLTemplate(templatePath, outputPath, data); err != nil {
+		t.Fatalf("ExecuteHTMLTemplate returned error: %v", err)
 	}
 	rendered, err := os.ReadFile(outputPath)
 	if err != nil {
@@ -261,9 +358,9 @@ func TestRenderBriefingEmailHTMLWithPathsWritesCacheFile(t *testing.T) {
 		t.Fatalf("write template: %v", err)
 	}
 
-	renderedPath, err := renderBriefingEmailHTMLWithPaths(testBriefingEmail(), templatePath, outputPath)
+	renderedPath, err := email.RenderBriefingHTMLWithPaths(testBriefingEmail(), templatePath, outputPath)
 	if err != nil {
-		t.Fatalf("renderBriefingEmailHTMLWithPaths returned error: %v", err)
+		t.Fatalf("RenderBriefingHTMLWithPaths returned error: %v", err)
 	}
 	if renderedPath != outputPath {
 		t.Fatalf("rendered path = %q, want %q", renderedPath, outputPath)
@@ -278,22 +375,22 @@ func TestRenderBriefingEmailHTMLWithPathsWritesCacheFile(t *testing.T) {
 }
 
 func TestRenderedEmailFilePathUsesCacheDir(t *testing.T) {
-	path := renderedEmailFilePath("/tmp/gpnews-cache")
+	path := email.RenderedEmailFilePath("/tmp/gpnews-cache")
 	want := filepath.Join("/tmp/gpnews-cache", "briefing_email.html")
 	if path != want {
 		t.Fatalf("rendered email path = %q, want %q", path, want)
 	}
 
-	defaultPath := renderedEmailFilePath("")
+	defaultPath := email.RenderedEmailFilePath("")
 	if defaultPath != filepath.Join("cache", "briefing_email.html") {
 		t.Fatalf("default rendered email path = %q, want cache/briefing_email.html", defaultPath)
 	}
 }
 
 func TestExecuteHTMLTemplateMissingTemplateReturnsClearError(t *testing.T) {
-	err := executeHTMLTemplate(filepath.Join(t.TempDir(), "missing.html"), filepath.Join(t.TempDir(), "out.html"), map[string]any{})
+	err := email.ExecuteHTMLTemplate(filepath.Join(t.TempDir(), "missing.html"), filepath.Join(t.TempDir(), "out.html"), map[string]any{})
 	if err == nil {
-		t.Fatal("executeHTMLTemplate returned nil error")
+		t.Fatal("ExecuteHTMLTemplate returned nil error")
 	}
 	if !strings.Contains(err.Error(), "read email template") {
 		t.Fatalf("error = %q, want read email template", err.Error())

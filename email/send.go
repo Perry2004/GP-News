@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -102,6 +104,26 @@ func (s *Sender) SendHTML(ctx context.Context, subject string, htmlBody string) 
 	}
 
 	return *output.MessageId, nil
+}
+
+func SendRenderedHTML(ctx context.Context, cfg Config, subject string, renderedEmailPath string) (string, error) {
+	htmlBody, err := os.ReadFile(renderedEmailPath)
+	if err != nil {
+		return "", fmt.Errorf("read rendered email HTML %q: %w", renderedEmailPath, err)
+	}
+
+	sender, err := NewSESSender(ctx, cfg)
+	if err != nil {
+		return "", err
+	}
+
+	messageID, err := sender.SendHTML(ctx, subject, string(htmlBody))
+	if err != nil {
+		return "", err
+	}
+
+	slog.Info("Sent briefing email", "message_id", messageID, "recipient_count", len(normalizeRecipients(cfg.To)))
+	return messageID, nil
 }
 
 func validateConfig(cfg Config) error {

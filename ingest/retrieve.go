@@ -23,7 +23,7 @@ type cachedNewsDataJSON struct {
 
 type Config struct {
 	NewsDataAPIKey string
-	EnableFetching bool
+	EnableFetching bool // whether to fetch new market and news data.
 	PersistData    bool
 	CacheDir       string
 }
